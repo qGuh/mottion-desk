@@ -41,9 +41,16 @@ var ICONS = {
   metrics: '<svg viewBox="0 0 24 24"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>'
 };
 
-// ─── BRAND LOGO SVGs ────────────────────────────────────────
-var LOGO_42 = '<svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mLg42" x1="0" y1="0" x2="42" y2="42" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6c5ce7"/><stop offset="100%" stop-color="#00cec9"/></linearGradient></defs><rect width="42" height="42" rx="12" fill="url(#mLg42)"/><path d="M9 32 L9 13 L21 26 L33 13 L33 32" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var LOGO_30 = '<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mLg30" x1="0" y1="0" x2="30" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6c5ce7"/><stop offset="100%" stop-color="#00cec9"/></linearGradient></defs><rect width="30" height="30" rx="8" fill="url(#mLg30)"/><path d="M6 22 L6 9 L15 19 L24 9 L24 22" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// ─── BRAND LOGO SVGs — MOTTION BRAND BOOK ───────────────────
+// Símbolo: M em laranja sobre fundo transparente (viewBox 48x32)
+var LOGO_SVG = '<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 28L4 6L24 26L44 6L44 28" stroke="#FF8C3A" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="26" r="2" fill="#FF8C3A" opacity="0.35"/></svg>';
+var LOGO_42  = '<svg width="42" height="28" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 28L4 6L24 26L44 6L44 28" stroke="#FF8C3A" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="26" r="2" fill="#FF8C3A" opacity="0.35"/></svg>';
+var LOGO_30  = '<svg width="30" height="20" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 28L4 6L24 26L44 6L44 28" stroke="#FF8C3A" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="26" r="2" fill="#FF8C3A" opacity="0.35"/></svg>';
+var LOGO_32  = '<svg width="32" height="21" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 28L4 6L24 26L44 6L44 28" stroke="#FF8C3A" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="26" r="2" fill="#FF8C3A" opacity="0.35"/></svg>';
+
+// Wordmark HTML com "tt" em laranja (usar em sidebar e login)
+var WORDMARK = '<span style="font-size:15px;font-weight:300;color:#E8DDD0;letter-spacing:-0.3px;line-height:1">Mo<strong style="font-weight:700;color:#FF8C3A">tt</strong>ion <span style="font-weight:600">Desk</span></span>';
+var WORDMARK_LG = '<span style="font-size:22px;font-weight:300;color:#E8DDD0;letter-spacing:-0.5px;line-height:1">Mo<strong style="font-weight:700;color:#FF8C3A">tt</strong>ion <span style="font-weight:600">Desk</span></span>';
 
 // ─── LABEL COLORS ───────────────────────────────────────────
 var LABEL_COLORS = ['#EF4444','#F97316','#EAB308','#22C55E','#14B8A6','#3B82F6','#6366F1','#A855F7','#EC4899','#6B7280'];
@@ -309,32 +316,78 @@ function formatTrackedTime(ms) {
 }
 
 // ─── SLA HELPERS ────────────────────────────────────────────
+
+/** Formata duração em ms → "2h 30min" ou "45min" */
+function _fmtDuration(ms) {
+  var absMs = Math.abs(ms);
+  var h = Math.floor(absMs / 3600000);
+  var m = Math.floor((absMs % 3600000) / 60000);
+  if (h > 0 && m > 0) return h + 'h ' + m + 'min';
+  if (h > 0)          return h + 'h';
+  return Math.max(1, m) + 'min';
+}
+
 function getSlaProgress(card, isDone) {
-  var hours = getSlaH()[card.priority] || 24;
-  var limitMs = hours * 3600000;
+  var isWaiting = !isDone && !!card.waitingSince;
+
+  // ── Caminho 1: usa sla_prazo do backend (campo ISO string) ──
+  if (card.sla_prazo) {
+    var prazoMs   = new Date(card.sla_prazo).getTime();
+    var createdMs = card.createdAt || Date.now();
+    var totalMs   = Math.max(prazoMs - createdMs, 1);
+    var elapsed   = Math.max(0, Date.now() - createdMs);
+    var remMs     = prazoMs - Date.now();
+    var rawPct    = Math.round((elapsed / totalMs) * 100);
+    var pct       = Math.min(rawPct, 100);
+    var color     = pct < 60 ? 'var(--green)' : pct < 85 ? '#EAB308' : 'var(--red)';
+    var expired   = remMs <= 0 && !isDone && !isWaiting;
+
+    // Derive slaStatus from live calculation (ignores pre-computed field)
+    var slaStatus = card.slaStatus ||
+      (isDone || isWaiting ? 'none' : expired ? 'danger' : pct >= 85 ? 'danger' : pct >= 60 ? 'warning' : 'ok');
+
+    var label = isDone    ? 'Concluído' :
+      isWaiting           ? 'SLA pausado' :
+      expired             ? 'Vencido há ' + _fmtDuration(remMs) :
+      remMs < 3600000     ? _fmtDuration(remMs) + ' restante' :
+                            _fmtDuration(remMs) + ' restantes';
+
+    return { pct: pct, rawPct: rawPct, color: isWaiting ? '#6B7280' : color,
+             label: label, expired: expired, slaStatus: slaStatus };
+  }
+
+  // ── Caminho 2: cálculo local (sem sla_prazo do backend) ─────
+  var hours    = getSlaH()[card.priority] || 24;
+  var limitMs  = hours * 3600000;
   var waitedMs = (card.waitingTotal || 0) + (card.waitingSince && !isDone ? Date.now() - card.waitingSince : 0);
-  var elapsed = isDone && card.completedAt
+  var elapsedL = isDone && card.completedAt
     ? Math.max(0, (card.completedAt - (card.createdAt || card.completedAt)) - waitedMs)
     : Math.max(0, Date.now() - (card.createdAt || Date.now()) - waitedMs);
-  var rawPct = Math.round((elapsed / limitMs) * 100);
-  var pct = Math.min(rawPct, 100);
-  var color = pct < 60 ? 'var(--green)' : pct < 85 ? '#EAB308' : 'var(--red)';
-  var remaining = limitMs - elapsed;
-  var isWaiting = !isDone && !!card.waitingSince;
-  var label = isDone ? 'Concluído' :
-    isWaiting ? 'SLA pausado' :
-    remaining <= 0 ? 'SLA vencido' :
-    remaining < 3600000 ? Math.ceil(remaining / 60000) + 'min restante' :
-    Math.ceil(remaining / 3600000) + 'h restante';
-  return { pct: pct, rawPct: rawPct, color: isWaiting ? '#6B7280' : color, label: label, expired: remaining <= 0 && !isDone && !isWaiting };
+  var rawPctL  = Math.round((elapsedL / limitMs) * 100);
+  var pctL     = Math.min(rawPctL, 100);
+  var colorL   = pctL < 60 ? 'var(--green)' : pctL < 85 ? '#EAB308' : 'var(--red)';
+  var remL     = limitMs - elapsedL;
+  var expiredL = remL <= 0 && !isDone && !isWaiting;
+  var slaStatusL = isDone || isWaiting ? 'none' : expiredL ? 'danger' : pctL >= 85 ? 'danger' : pctL >= 60 ? 'warning' : 'ok';
+
+  var labelL = isDone      ? 'Concluído' :
+    isWaiting              ? 'SLA pausado' :
+    expiredL               ? 'Vencido há ' + _fmtDuration(remL) :
+    remL < 3600000         ? _fmtDuration(remL) + ' restante' :
+                             _fmtDuration(remL) + ' restantes';
+
+  return { pct: pctL, rawPct: rawPctL, color: isWaiting ? '#6B7280' : colorL,
+           label: labelL, expired: expiredL, slaStatus: slaStatusL };
 }
 
 function renderSlaBar(card, isDone) {
-  var s = getSlaProgress(card, isDone);
+  var s       = getSlaProgress(card, isDone);
+  var cls     = 'sla-bar-label sla-' + (s.slaStatus || 'none');
+  var inlineC = '';   // cor já vem via classe CSS; limpa inline para evitar conflito
   return '<div class="card-sla">' +
     '<div class="sla-bar-wrap">' +
     '<div class="sla-bar-track"><div class="sla-bar-fill" style="width:' + s.pct + '%;background:' + s.color + '"></div></div>' +
-    '<span class="sla-bar-label" style="color:' + (s.expired ? 'var(--red)' : '') + '">' + s.label + '</span>' +
+    '<span class="' + cls + '">' + s.label + '</span>' +
     '</div></div>';
 }
 
@@ -1188,6 +1241,16 @@ var Store = {
     this.save();
     return true;
   },
+  addUser: async function (name, email, pw, deptId, role, isAdmin) {
+    var emailLc = email.toLowerCase();
+    if (this.data.users.find(function (u) { return u.email.toLowerCase() === emailLc; })) return null;
+    var salt   = _generateSalt();
+    var pwHash = await _hashPassword(pw, salt);
+    var u = { id: uid(), name: name, email: email, pwHash: pwHash, pwHashSalt: salt, department: deptId, role: role || 'Colaborador', isAdmin: !!isAdmin, phone: '', notes: '', createdAt: Date.now() };
+    this.data.users.push(u);
+    this.save();
+    return u;
+  },
   saveSetting: function (key, value) {
     if (!this.data.settings) this.data.settings = {};
     this.data.settings[key] = value;
@@ -1549,7 +1612,12 @@ var App = {
   adminTab: 'users',
   qualityPeriod: '90',
   bulkMode: false,
-  bulkSelected: []
+  bulkSelected: [],
+  userSearch: '',
+  userFilterDept: '',
+  userFilterRole: '',
+  userSort: 'name',
+  selectedUsers: []
 };
 
 var $app = document.getElementById('app');
@@ -1561,7 +1629,142 @@ if (localStorage.getItem('servicedesk_theme') === 'light') {
   document.documentElement.setAttribute('data-theme', 'dark');
 }
 
+// ─── GUARD: Autenticação via API Backend ─────────────────────
+// Se api.js estiver carregado e não houver JWT, exibe a tela de login
+// do backend antes de qualquer inicialização do Store.
+// O login salva o token e recarrega a página, retomando o fluxo normal.
+var _apiLoginShown = false;
+if (typeof Auth !== 'undefined' && typeof renderAPILogin !== 'undefined') {
+  if (!Auth.isLoggedIn()) {
+    _apiLoginShown = true;
+    renderAPILogin();
+  }
+}
+
+if (!_apiLoginShown) {
+
 Store.load();
+
+// ─── PONTE API → STORE ───────────────────────────────────────
+// Quando o usuário autenticou via API (JWT presente), injeta-o no
+// Store local para que Store.me() funcione e a tela antiga de login
+// nunca seja exibida. Cria o usuário no Store se ainda não existir.
+(function _bridgeAPIUser() {
+  if (typeof Auth === 'undefined' || !Auth.isLoggedIn()) return;
+  var apiUser = Auth.getUser();
+  if (!apiUser || !apiUser.email) return;
+
+  var emailLc = apiUser.email.toLowerCase();
+
+  // Procura usuário já existente no Store (por e-mail)
+  var storeUser = Store.data.users.find(function (u) {
+    return (u.email || '').toLowerCase() === emailLc;
+  });
+
+  // Se não existe, cria uma entrada sintética no Store
+  if (!storeUser) {
+    storeUser = {
+      id:          'api_' + apiUser.id,
+      name:        apiUser.nome || apiUser.name || apiUser.email,
+      email:       apiUser.email,
+      isAdmin:     apiUser.perfil === 'admin',
+      role:        apiUser.perfil === 'admin'  ? 'Administrador'
+                 : apiUser.perfil === 'agente' ? 'Agente'
+                 :                               'Colaborador',
+      department:  apiUser.setor_id ? String(apiUser.setor_id) : '',
+      phone:       '',
+      notes:       'Conta sincronizada via API.',
+      pwHash:      '__api_auth__',
+      pwHashSalt:  '__api_auth__',
+      createdAt:   Date.now(),
+    };
+    Store.data.users.push(storeUser);
+    Store.save();
+  }
+
+  // Abre a sessão local para o usuário encontrado/criado
+  Store.data.currentUserId = storeUser.id;
+  _createSession(storeUser.id, storeUser.isAdmin);
+})();
+// ─────────────────────────────────────────────────────────────
+
+// ─── PATCHES Store ↔ API (fire-and-forget) ───────────────────
+// Interceptam addCard / updateCard / deleteCard / moveCard para
+// espelhar cada operação local no backend, sem bloquear a UI.
+// Só atuam se Auth.isLoggedIn() e o card possuir _backendId.
+(function _installStorePatches() {
+  if (typeof API === 'undefined' || typeof Auth === 'undefined') return;
+
+  // ── addCard ─────────────────────────────────────────────────
+  var _origAdd = Store.addCard.bind(Store);
+  Store.addCard = function (boardId, listId, title) {
+    var card = _origAdd(boardId, listId, title);
+    if (card && Auth.isLoggedIn()) {
+      // Usa setTimeout(0) para capturar propriedades definidas logo após o retorno
+      setTimeout(function () {
+        var board    = Store.board(boardId);
+        var list     = board ? board.lists.find(function (l) { return l.id === listId; }) : null;
+        var listName = list ? list.name : 'Aberto';
+        API.tickets.criar(_mapCardToApi(card, listName)).then(function (res) {
+          if (res && res.success && res.data && res.data.id) {
+            card._backendId = res.data.id;
+            // Atualiza id para o padrão 'bk_' para consistência com syncTickets
+            card.id = 'bk_' + res.data.id;
+            Store.save();
+          }
+        }).catch(function (e) {
+          console.warn('[API] addCard →', e.message);
+        });
+      }, 0);
+    }
+    return card;
+  };
+
+  // ── updateCard ───────────────────────────────────────────────
+  var _origUpdate = Store.updateCard.bind(Store);
+  Store.updateCard = function (boardId, listId, cardId, updates) {
+    _origUpdate(boardId, listId, cardId, updates);
+    if (!Auth.isLoggedIn()) return;
+    var card = Store.card(boardId, listId, cardId);
+    if (!card || !card._backendId) return;
+    var board    = Store.board(boardId);
+    var list     = board ? board.lists.find(function (l) { return l.id === listId; }) : null;
+    var listName = list ? list.name : 'Aberto';
+    API.tickets.atualizar(card._backendId, _mapCardToApi(card, listName))
+      .catch(function (e) { console.warn('[API] updateCard →', e.message); });
+  };
+
+  // ── deleteCard ───────────────────────────────────────────────
+  var _origDelete = Store.deleteCard.bind(Store);
+  Store.deleteCard = function (boardId, listId, cardId) {
+    // Captura _backendId ANTES de remover
+    var card      = Store.card(boardId, listId, cardId);
+    var backendId = card ? card._backendId : null;
+    _origDelete(boardId, listId, cardId);
+    if (backendId && Auth.isLoggedIn()) {
+      API.tickets.excluir(backendId)
+        .catch(function (e) { console.warn('[API] deleteCard →', e.message); });
+    }
+  };
+
+  // ── moveCard (mudança de status por drag ou seleção de lista) ─
+  var _origMove = Store.moveCard.bind(Store);
+  Store.moveCard = function (boardId, fromListId, toListId, fromIdx, toIdx) {
+    _origMove(boardId, fromListId, toListId, fromIdx, toIdx);
+    if (!Auth.isLoggedIn() || fromListId === toListId) return;
+    // Card já está na nova lista após o move original
+    var board   = Store.board(boardId);
+    var newList = board ? board.lists.find(function (l) { return l.id === toListId; }) : null;
+    if (!newList) return;
+    var card = newList.cards[toIdx] || newList.cards[newList.cards.length - 1];
+    if (!card || !card._backendId) return;
+    API.tickets.atualizar(card._backendId, _mapCardToApi(card, newList.name))
+      .catch(function (e) { console.warn('[API] moveCard →', e.message); });
+  };
+
+})();
+// ─────────────────────────────────────────────────────────────
+
 Store.ensureAdminAsync().then(function () {
   if (Store.me()) {
     // Sessão não está em sessionStorage (ex: refresh) — forçar novo login
@@ -1572,6 +1775,8 @@ Store.ensureAdminAsync().then(function () {
     } else {
       App.view = 'dashboard';
       renderApp();
+      // Sincroniza tickets do backend em background após render inicial
+      if (typeof syncTickets !== 'undefined') syncTickets();
     }
   } else {
     App.view = 'auth';
@@ -1621,6 +1826,8 @@ document.addEventListener('keydown', function (e) {
   }
 });
 
+} // end if (!_apiLoginShown) — guarda de autenticação da API
+
 // ============================================================
 // AUTH
 // ============================================================
@@ -1629,7 +1836,7 @@ function renderAuth() {
   if (App.authMode === 'login') {
     $app.innerHTML =
       '<div class="auth-wrapper"><div class="auth-card">' +
-      '<div class="auth-logo">' + LOGO_42 + '<div class="auth-logo-text">Mottion Desk</div></div>' +
+      '<div class="auth-logo">' + LOGO_42 + '<div class="auth-logo-text">' + WORDMARK_LG + '</div></div>' +
       '<p class="auth-subtitle">Sistema de Tickets de Serviço Interno</p>' +
       '<div class="auth-error" id="auth-error"></div>' +
       '<form class="auth-form" id="auth-form">' +
@@ -1705,7 +1912,7 @@ function renderAuth() {
     var opts = getDepts().map(function (d) { return '<option value="' + d.id + '">' + d.icon + ' ' + d.name + '</option>'; }).join('');
     $app.innerHTML =
       '<div class="auth-wrapper"><div class="auth-card">' +
-      '<div class="auth-logo">' + LOGO_42 + '<div class="auth-logo-text">Mottion Desk</div></div>' +
+      '<div class="auth-logo">' + LOGO_42 + '<div class="auth-logo-text">' + WORDMARK_LG + '</div></div>' +
       '<p class="auth-subtitle">Crie sua conta para começar</p>' +
       '<div class="auth-error" id="auth-error"></div>' +
       '<form class="auth-form" id="auth-form">' +
@@ -1763,7 +1970,7 @@ function renderApp() {
     '<button class="hamburger-btn" id="btn-sidebar-toggle" aria-label="Abrir menu" title="Menu">' +
     '<span></span><span></span><span></span>' +
     '</button>' +
-    '<div class="header-logo" id="logo-home">' + LOGO_30 + '<span>Mottion Desk</span></div>' +
+    '<div class="header-logo" id="logo-home">' + LOGO_30 + WORDMARK + '</div>' +
     '<div class="header-spacer"></div>' +
     '<div class="header-search" id="header-search">' +
     '<input type="text" id="search-input" placeholder="Pesquisar tickets ou quadros…" autocomplete="off">' +
@@ -1784,11 +1991,15 @@ function renderApp() {
     '</header>' +
     '<div class="app-body">' +
     '<aside class="sidebar">' +
+    '<div class="sidebar-logo" id="sidebar-logo-home">' +
+      LOGO_32 +
+      '<div>' + WORDMARK + '</div>' +
+    '</div>' +
     '<div class="sidebar-section"><div class="sidebar-nav">' +
     '<a class="sidebar-link' + (App.view === 'dashboard' ? ' active' : '') + '" id="nav-dash">' + ICONS.dash + ' Início</a>' +
     '<a class="sidebar-link' + (App.view === 'mytasks' ? ' active' : '') + '" id="nav-tasks">' + ICONS.check + ' Minhas Tarefas</a>' +
     '<a class="sidebar-link' + (App.view === 'calendar' ? ' active' : '') + '" id="nav-cal">' + ICONS.calendar + ' Calendário</a>' +
-    '<a class="sidebar-link' + (App.view === 'docs' ? ' active' : '') + '" id="nav-docs">' + ICONS.desc + ' Documentação TI</a>' +
+    '<a class="sidebar-link' + (App.view === 'docs' ? ' active' : '') + '" id="nav-docs">' + ICONS.desc + ' Base de Conhecimento</a>' +
     '<a class="sidebar-link' + (App.view === 'metrics' ? ' active' : '') + '" id="nav-metrics">' + ICONS.metrics + ' Métricas</a>' +
     (Store.isAdmin() ? '<a class="sidebar-link sidebar-admin-link' + (App.view === 'admin' ? ' active' : '') + '" id="nav-admin">' + ICONS.users + ' Administração</a>' : '') +
     '</div></div>' +
@@ -1827,6 +2038,8 @@ function renderApp() {
   var navAdmin = document.getElementById('nav-admin');
   if (navAdmin) navAdmin.onclick = function () { App.view = 'admin'; App.boardId = null; renderApp(); };
   document.getElementById('sidebar-add-board').onclick = function () { showCreateBoard(); };
+  var sidebarLogo = document.getElementById('sidebar-logo-home');
+  if (sidebarLogo) sidebarLogo.onclick = function () { App.view = 'dashboard'; App.boardId = null; renderApp(); };
 
   var btnCmd = document.getElementById('btn-cmd');
   if (btnCmd) btnCmd.onclick = function () { showCommandPalette(); };
@@ -1905,6 +2118,10 @@ function renderApp() {
   if (mc) mc.classList.add('view-fade-in');
 
   _startDueDateReminder();
+
+  // Scroll: metrics precisa de overflow-y:auto; demais views usam overflow:hidden
+  var _mc = document.getElementById('main-content');
+  if (_mc) _mc.style.overflowY = (App.view === 'metrics') ? 'auto' : '';
 
   if (App.view === 'board' && App.boardId) renderBoard();
   else if (App.view === 'mytasks') renderMyTasks();
@@ -2208,92 +2425,318 @@ function _docMarkViewed(id) {
 var _kbCatIcons = { 'Sistemas': '💻', 'Redes': '🌐', 'Hardware': '🖥️', 'Procedimentos': '📋', 'Geral': '📁' };
 function _catIcon(c) { return _kbCatIcons[c] || '📄'; }
 
-// ─── DOCS RENDER ────────────────────────────────────────────
+// ─── DOCS RENDER (KB) ────────────────────────────────────────
 function renderDocs() {
   var main = document.getElementById('main-content');
   if (!main) return;
 
-  var allDocs = Store.docs();
-  var q = (App.docSearch || '').toLowerCase().trim();
-  var filteredDocs = App.activeDocCat === 'Todas' ? allDocs : allDocs.filter(function(d) { return d.category === App.activeDocCat; });
-  if (q) filteredDocs = allDocs.filter(function(d) {
-    return (d.title||'').toLowerCase().indexOf(q) >= 0 || (d.content||'').toLowerCase().indexOf(q) >= 0;
-  });
+  var canEdit = Store.isAdmin() || (Store.me() && Store.me().role === 'agent');
+  // Check perfil from API user
+  var apiUser = (typeof Auth !== 'undefined') ? Auth.getUser() : null;
+  if (apiUser && (apiUser.perfil === 'admin' || apiUser.perfil === 'agente')) canEdit = true;
 
-  // Recently viewed
-  var recentDocs = (App.docRecentlyViewed || []).map(function(id) {
-    return allDocs.find(function(d){ return d.id === id; });
-  }).filter(Boolean).slice(0,5);
-
-  // Sidebar
-  var catHtml =
-    '<div class="docs-cat-link' + (App.activeDocCat === 'Todas' && !q ? ' active' : '') + '" data-cat="Todas">📚 Todos os Artigos <span class="doc-badge">' + allDocs.length + '</span></div>';
-  for (var ci = 0; ci < _kbCategories.length; ci++) {
-    var c = _kbCategories[ci];
-    var cnt = allDocs.filter(function(d){ return d.category === c; }).length;
-    var act = App.activeDocCat === c && !q ? ' active' : '';
-    catHtml += '<div class="docs-cat-link' + act + '" data-cat="' + c + '">' + _catIcon(c) + ' ' + c + ' <span class="doc-badge">' + cnt + '</span></div>';
-  }
-
-  // Pinned articles sidebar section
-  var pinnedDocs = allDocs.filter(function(d){ return d.pinned; });
-  var pinnedHtml = '';
-  if (pinnedDocs.length) {
-    pinnedHtml = '<div class="docs-sidebar-section-title">📌 Fixados</div>';
-    pinnedDocs.forEach(function(d) {
-      pinnedHtml += '<div class="docs-pinned-link' + (App.activeDocId === d.id ? ' active' : '') + '" data-docid="' + d.id + '">' + esc(d.title.length > 28 ? d.title.substring(0,28)+'…' : d.title) + '</div>';
-    });
-  }
-
-  // Recently viewed sidebar
-  var recentHtml = '';
-  if (recentDocs.length && !App.activeDocId) {
-    recentHtml = '<div class="docs-sidebar-section-title" style="margin-top:12px">🕐 Vistos recentemente</div>';
-    recentDocs.forEach(function(d) {
-      recentHtml += '<div class="docs-pinned-link" data-docid="' + d.id + '">' + esc(d.title.length > 28 ? d.title.substring(0,28)+'…' : d.title) + '</div>';
-    });
-  }
-
-  var html =
-    '<div class="docs-layout">' +
-    '<aside class="docs-sidebar">' +
-    '<div class="docs-sidebar-header">' +
-    '<div class="docs-search-wrap">' +
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
-    '<input type="text" id="doc-search" class="docs-search-input" placeholder="Buscar artigos…" autocomplete="off" value="' + esc(App.docSearch || '') + '">' +
-    (q ? '<button id="doc-search-clear" class="docs-search-clear">✕</button>' : '') +
+  main.innerHTML =
+    '<div style="padding:0 32px 48px">' +
+    '<div class="view-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:4px;">' +
+    '<div style="width:24px;height:24px;flex-shrink:0">' + ICONS.desc + '</div>' +
+    '<span class="view-title" style="margin:0">Base de Conhecimento</span>' +
+    (canEdit ? '<button class="btn-primary" id="kb-new-btn" style="margin-left:auto;height:34px;padding:0 16px;font-size:13px">+ Novo Artigo</button>' : '') +
     '</div>' +
-    '</div>' +
-    '<div class="docs-sidebar-nav" id="doc-cat-list">' +
-    catHtml +
-    pinnedHtml +
-    recentHtml +
-    '</div>' +
-    '<div class="docs-sidebar-footer">' +
-    '<button class="btn-primary docs-new-btn" id="btn-new-doc-side">' + ICONS.plus + ' Novo Artigo</button>' +
-    '</div>' +
-    '</aside>' +
-    '<div class="docs-main" id="docs-main-area">';
 
-  if (App.activeDocId) {
-    var docToRead = allDocs.find(function(d){ return d.id === App.activeDocId; });
-    if (docToRead) {
-      _docMarkViewed(App.activeDocId);
-      html += _renderDocReaderView(docToRead, allDocs);
-    } else {
-      App.activeDocId = null;
-      html += _renderDocGridView(filteredDocs, q);
-    }
-  } else {
-    html += _renderDocGridView(filteredDocs, q);
+    '<div style="display:flex;gap:10px;margin:18px 0 20px;flex-wrap:wrap;align-items:center;">' +
+    '<div style="position:relative;flex:1;min-width:200px;max-width:380px;">' +
+    '<input id="kb-search" type="text" placeholder="🔍  Buscar artigos..." style="width:100%;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:0 12px;font-size:13px;box-sizing:border-box;">' +
+    '</div>' +
+    '<select id="kb-cat-filter" style="height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:0 10px;font-size:13px;">' +
+    '<option value="">Todas as categorias</option>' +
+    '<option value="Acesso">Acesso</option>' +
+    '<option value="Hardware">Hardware</option>' +
+    '<option value="Solicitação">Solicitação</option>' +
+    '<option value="Software">Software</option>' +
+    '<option value="Rede">Rede</option>' +
+    '<option value="Outro">Outro</option>' +
+    '</select>' +
+    '</div>' +
+
+    '<div id="kb-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">' +
+    // skeleton
+    [1,2,3].map(function() {
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;height:130px;background:linear-gradient(90deg,var(--border) 25%,var(--surface) 50%,var(--border) 75%);background-size:200% 100%;animation:q-shimmer 1.5s infinite;"></div>';
+    }).join('') +
+    '</div>' +
+    '</div>';
+
+  // Wire up new article button
+  var newBtn = document.getElementById('kb-new-btn');
+  if (newBtn) newBtn.onclick = function() { _kbOpenForm(null); };
+
+  // Fetch articles
+  _kbLoad({ busca: '', categoria: '' });
+
+  // Search debounce
+  var _kbTimer = null;
+  var searchEl = document.getElementById('kb-search');
+  var catEl    = document.getElementById('kb-cat-filter');
+  function _kbFilter() {
+    clearTimeout(_kbTimer);
+    _kbTimer = setTimeout(function() {
+      _kbLoad({ busca: searchEl ? searchEl.value : '', categoria: catEl ? catEl.value : '' });
+    }, 300);
   }
-
-  html += '</div></div>';
-  main.innerHTML = html;
-  _bindDocsEvents(allDocs);
+  if (searchEl) searchEl.oninput = _kbFilter;
+  if (catEl)    catEl.onchange   = _kbFilter;
 }
 
-function _renderDocGridView(docs, q) {
+// ── KB: load and render article grid ───────────────────────
+function _kbLoad(params) {
+  var grid = document.getElementById('kb-grid');
+  if (!grid) return;
+
+  var apiUser = (typeof Auth !== 'undefined') ? Auth.getUser() : null;
+  var canEdit = apiUser && (apiUser.perfil === 'admin' || apiUser.perfil === 'agente');
+
+  if (typeof API === 'undefined' || !Auth.isLoggedIn()) {
+    grid.innerHTML = '<p style="color:var(--text-light);grid-column:1/-1;padding:40px 0;text-align:center">API indisponível.</p>';
+    return;
+  }
+
+  API.kb.listar(params).then(function(r) {
+    var grid2 = document.getElementById('kb-grid');
+    if (!grid2) return;
+    if (!r || !r.success || !r.data.length) {
+      grid2.innerHTML = '<p style="color:var(--text-light);grid-column:1/-1;padding:40px 0;text-align:center">Nenhum artigo encontrado.</p>';
+      return;
+    }
+    grid2.innerHTML = r.data.map(function(a) {
+      return _kbCard(a, canEdit);
+    }).join('');
+
+    // wire up cards
+    r.data.forEach(function(a) {
+      var card = document.getElementById('kb-card-' + a.id);
+      if (!card) return;
+      card.querySelector('.kb-card-body').onclick = function() { _kbOpenArticle(a.id); };
+      var editBtn = card.querySelector('.kb-edit-btn');
+      if (editBtn) editBtn.onclick = function(e) { e.stopPropagation(); _kbOpenForm(a); };
+      var delBtn = card.querySelector('.kb-del-btn');
+      if (delBtn) delBtn.onclick = function(e) {
+        e.stopPropagation();
+        if (!confirm('Remover artigo "' + a.titulo + '"?')) return;
+        API.kb.excluir(a.id).then(function() {
+          showToast('Artigo removido.', 'success');
+          var el = document.getElementById('kb-card-' + a.id);
+          if (el) el.remove();
+        });
+      };
+    });
+  }).catch(function() {
+    var grid2 = document.getElementById('kb-grid');
+    if (grid2) grid2.innerHTML = '<p style="color:var(--red);grid-column:1/-1;padding:40px 0;text-align:center">Erro ao carregar artigos.</p>';
+  });
+}
+
+// ── KB: single article card HTML ───────────────────────────
+function _kbCard(a, canEdit) {
+  var catColors = { 'Acesso':'#3B82F6','Hardware':'#F97316','Solicitação':'#8B5CF6','Software':'#22C55E','Rede':'#EAB308','Outro':'#6B7280' };
+  var catCol = catColors[a.categoria] || '#6B7280';
+  var tags = (a.tags || '').split(',').filter(Boolean).slice(0, 4);
+  var tagsHtml = tags.map(function(t) {
+    return '<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:var(--border);color:var(--text-secondary);margin:2px 2px 0 0;">' + esc(t.trim()) + '</span>';
+  }).join('');
+
+  return '<div id="kb-card-' + a.id + '" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,0.15)\'" onmouseout="this.style.boxShadow=\'\'">' +
+    '<div class="kb-card-body" style="padding:18px 18px 14px;flex:1;cursor:pointer;">' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">' +
+    '<span style="flex:1;font-size:14px;font-weight:600;color:var(--text);line-height:1.35;">' + esc(a.titulo) + '</span>' +
+    (a.categoria ? '<span style="flex-shrink:0;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:' + catCol + '22;color:' + catCol + ';border:1px solid ' + catCol + '44;">' + esc(a.categoria) + '</span>' : '') +
+    '</div>' +
+    '<div style="margin-bottom:10px;">' + tagsHtml + '</div>' +
+    '<div style="font-size:12px;color:var(--text-light);display:flex;align-items:center;gap:12px;">' +
+    '<span>👁 ' + (a.visualizacoes || 0) + ' visualizações</span>' +
+    '<span>' + (a.autor_nome ? '✍ ' + esc(a.autor_nome) : '') + '</span>' +
+    '</div>' +
+    '</div>' +
+    (canEdit ?
+      '<div style="display:flex;gap:6px;padding:10px 18px;border-top:1px solid var(--border);background:var(--bg);">' +
+      '<button class="kb-edit-btn btn-secondary" style="flex:1;height:28px;font-size:12px;padding:0 8px;">✏ Editar</button>' +
+      '<button class="kb-del-btn" style="height:28px;width:32px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--red);cursor:pointer;font-size:14px;">🗑</button>' +
+      '</div>'
+    : '') +
+    '</div>';
+}
+
+// ── KB: open article modal ─────────────────────────────────
+function _kbOpenArticle(id) {
+  // Show loading modal
+  _kbShowModal(
+    '<div style="text-align:center;padding:60px 0;color:var(--text-light)">Carregando…</div>',
+    'Artigo'
+  );
+
+  API.kb.buscar(id).then(function(r) {
+    if (!r || !r.success) return;
+    var a = r.data;
+    var catColors = { 'Acesso':'#3B82F6','Hardware':'#F97316','Solicitação':'#8B5CF6','Software':'#22C55E','Rede':'#EAB308','Outro':'#6B7280' };
+    var catCol = catColors[a.categoria] || '#6B7280';
+    var tags = (a.tags || '').split(',').filter(Boolean);
+
+    var header =
+      '<div style="margin-bottom:16px;">' +
+      (a.categoria ? '<span style="padding:2px 12px;border-radius:20px;font-size:11px;font-weight:700;background:' + catCol + '22;color:' + catCol + ';border:1px solid ' + catCol + '44;">' + esc(a.categoria) + '</span>' : '') +
+      '<span style="margin-left:12px;font-size:12px;color:var(--text-light)">👁 ' + (a.visualizacoes || 0) + ' · ✍ ' + esc(a.autor_nome || '—') + '</span>' +
+      '</div>' +
+      '<div style="margin-bottom:16px;">' + tags.map(function(t) {
+        return '<span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:var(--border);color:var(--text-secondary);margin:2px 2px 0 0;">' + esc(t.trim()) + '</span>';
+      }).join('') + '</div>';
+
+    var body = header + '<div style="border-top:1px solid var(--border);padding-top:16px;">' + _kbRenderMarkdown(a.conteudo) + '</div>';
+    _kbShowModal(body, a.titulo);
+  });
+}
+
+// ── KB: simple markdown renderer ───────────────────────────
+function _kbRenderMarkdown(md) {
+  if (!md) return '';
+  var html = md
+    // escape HTML first (then we'll add back our own tags)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // headings
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:14px;font-weight:700;margin:16px 0 6px;color:var(--text)">$1</h4>')
+    .replace(/^## (.+)$/gm,  '<h3 style="font-size:16px;font-weight:700;margin:18px 0 8px;color:var(--text)">$1</h3>')
+    .replace(/^# (.+)$/gm,   '<h2 style="font-size:20px;font-weight:800;margin:0 0 16px;color:var(--text)">$1</h2>')
+    // bold + italic
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+    .replace(/_(.+?)_/g,       '<em>$1</em>')
+    // inline code
+    .replace(/`(.+?)`/g, '<code style="background:var(--border);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>')
+    // unordered list items
+    .replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:4px;">$1</li>')
+    // ordered list items
+    .replace(/^\d+\. (.+)$/gm, '<li style="margin:4px 0;padding-left:4px;">$1</li>')
+    // wrap consecutive <li> in <ul>
+    .replace(/(<li[^>]*>.*?<\/li>\n?)+/g, function(m) { return '<ul style="padding-left:20px;margin:10px 0;">' + m + '</ul>'; })
+    // paragraphs (double newline)
+    .replace(/\n\n/g, '</p><p style="margin:10px 0;line-height:1.6;">')
+    // single newlines
+    .replace(/\n/g, '<br>');
+  return '<p style="margin:10px 0;line-height:1.6;color:var(--text);">' + html + '</p>';
+}
+
+// ── KB: modal shell ────────────────────────────────────────
+function _kbShowModal(bodyHtml, title) {
+  var existing = document.getElementById('kb-modal-overlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'kb-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:4000;display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.4);">' +
+    '<div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);flex-shrink:0;">' +
+    '<span style="flex:1;font-size:17px;font-weight:700;color:var(--text);">' + esc(title) + '</span>' +
+    '<button id="kb-modal-close" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:18px;line-height:1;">×</button>' +
+    '</div>' +
+    '<div id="kb-modal-body" style="flex:1;overflow-y:auto;padding:24px;">' + bodyHtml + '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  document.getElementById('kb-modal-close').onclick = function() { overlay.remove(); };
+}
+
+// ── KB: create/edit form modal ─────────────────────────────
+function _kbOpenForm(article) {
+  var isEdit = !!article;
+  var catOptions = ['Acesso','Hardware','Solicitação','Software','Rede','Outro'].map(function(c) {
+    return '<option value="' + c + '"' + (article && article.categoria === c ? ' selected' : '') + '>' + c + '</option>';
+  }).join('');
+
+  _kbShowModal(
+    '<div style="display:flex;flex-direction:column;gap:14px;">' +
+    '<div>' +
+    '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Título *</label>' +
+    '<input id="kb-f-titulo" type="text" value="' + esc(article ? article.titulo : '') + '" placeholder="Título do artigo" style="width:100%;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:0 12px;font-size:13px;box-sizing:border-box;">' +
+    '</div>' +
+    '<div style="display:flex;gap:12px;">' +
+    '<div style="flex:1;">' +
+    '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Categoria</label>' +
+    '<select id="kb-f-cat" style="width:100%;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:0 10px;font-size:13px;">' +
+    '<option value="">Sem categoria</option>' + catOptions +
+    '</select>' +
+    '</div>' +
+    '<div style="flex:1;">' +
+    '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Tags <span style="font-weight:400">(separadas por vírgula)</span></label>' +
+    '<input id="kb-f-tags" type="text" value="' + esc(article ? article.tags || '' : '') + '" placeholder="ex: senha, acesso, login" style="width:100%;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:0 12px;font-size:13px;box-sizing:border-box;">' +
+    '</div>' +
+    '</div>' +
+    '<div>' +
+    '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;">Conteúdo * <span style="font-weight:400;color:var(--text-light)">(suporta # Título, **negrito**, - lista)</span></label>' +
+    '<textarea id="kb-f-conteudo" rows="14" placeholder="Escreva o artigo aqui..." style="width:100%;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:10px 12px;font-size:13px;font-family:monospace;resize:vertical;box-sizing:border-box;line-height:1.5;">' + esc(article ? article.conteudo : '') + '</textarea>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:4px;">' +
+    '<button id="kb-f-preview" class="btn-secondary" style="height:36px;padding:0 16px;font-size:13px;">👁 Pré-visualizar</button>' +
+    '<button id="kb-f-save" class="btn-primary" style="height:36px;padding:0 20px;font-size:13px;">' + (isEdit ? '💾 Salvar alterações' : '✚ Publicar artigo') + '</button>' +
+    '</div>' +
+    '</div>',
+    isEdit ? 'Editar artigo' : 'Novo artigo'
+  );
+
+  document.getElementById('kb-f-preview').onclick = function() {
+    var md = document.getElementById('kb-f-conteudo').value;
+    var titulo = document.getElementById('kb-f-titulo').value || 'Pré-visualização';
+    _kbShowModal(_kbRenderMarkdown(md), titulo);
+  };
+
+  document.getElementById('kb-f-save').onclick = function() {
+    var titulo    = (document.getElementById('kb-f-titulo').value || '').trim();
+    var conteudo  = (document.getElementById('kb-f-conteudo').value || '').trim();
+    var categoria = document.getElementById('kb-f-cat').value;
+    var tags      = document.getElementById('kb-f-tags').value;
+
+    if (!titulo)   { showToast('Informe o título.', 'error');   return; }
+    if (!conteudo) { showToast('Informe o conteúdo.', 'error'); return; }
+
+    var btn = document.getElementById('kb-f-save');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+
+    var payload = { titulo: titulo, conteudo: conteudo, categoria: categoria, tags: tags };
+    var p = isEdit ? API.kb.atualizar(article.id, payload) : API.kb.criar(payload);
+
+    p.then(function(r) {
+      if (!r || !r.success) { showToast('Erro ao salvar.', 'error'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
+      showToast(isEdit ? 'Artigo atualizado!' : 'Artigo publicado!', 'success');
+      document.getElementById('kb-modal-overlay').remove();
+      renderDocs(); // refresh
+    }).catch(function() {
+      showToast('Erro ao salvar.', 'error');
+      btn.disabled = false; btn.textContent = 'Salvar';
+    });
+  };
+}
+
+// ─── LEGACY DOCS STUBS (kept so outside references don't crash) ──
+function _renderDocGridView(docs, q) { return ''; }
+function _renderDocReaderView(doc, allDocs) { return ''; }
+function _bindDocsEvents(allDocs) {}
+function renderDocGridView(docs, customTitle) { return ''; }
+function renderDocReaderView(doc) { return ''; }
+function bindGridEvents() {}
+function bindReaderEvents() {}
+
+// ── Legacy: keep previously viewed doc state variables alive ─
+if (typeof App !== 'undefined') {
+  if (!App.activeDocId)  App.activeDocId  = null;
+  if (!App.docSearch)    App.docSearch    = '';
+  if (!App.activeDocCat) App.activeDocCat = 'Todas';
+  if (!App.docSort)      App.docSort      = 'newest';
+  if (!App.docView)      App.docView      = 'grid';
+}
+
+
+// (old _renderDocGridView removed — superseded by KB backend implementation)
+function _renderDocGridView_REMOVED(docs, q) {
   var sort = App.docSort || 'newest';
   var sorted = docs.slice();
   if (sort === 'newest') sorted.sort(function(a,b){ return b.updatedAt - a.updatedAt; });
@@ -2387,7 +2830,7 @@ function _renderDocGridView(docs, q) {
   return html;
 }
 
-function _renderDocReaderView(doc, allDocs) {
+function _renderDocReaderView_REMOVED(doc, allDocs) {
   var au = Store.user(doc.authorId);
   var authorName = au ? au.name : 'Desconhecido';
   var rt = _readTime(doc.content);
@@ -2478,7 +2921,7 @@ function _renderDocReaderView(doc, allDocs) {
   );
 }
 
-function _bindDocsEvents(allDocs) {
+function _bindDocsEvents_REMOVED(allDocs) {
   var main = document.getElementById('main-content');
 
   // Sidebar category links
@@ -2616,11 +3059,7 @@ function _bindDocsEvents(allDocs) {
   }
 }
 
-// Keep legacy stubs so any outside call doesn't crash
-function renderDocGridView(docs, customTitle) { return _renderDocGridView(docs, ''); }
-function renderDocReaderView(doc) { return _renderDocReaderView(doc, Store.docs()); }
-function bindGridEvents() {}
-function bindReaderEvents() {}
+// Legacy stubs superseded above
 
 function showDocModal(docId) {
   var doc = docId ? Store.docs().find(function (d) { return d.id === docId; }) : null;
@@ -2900,54 +3339,349 @@ function renderAdminTab(tab) {
 
 // ─── TAB: USUÁRIOS ──────────────────────────────────────────
 function renderAdminUsers(el) {
-  var users = Store.allUsers();
+  var allUsers = Store.allUsers();
   var me = Store.me();
+  var depts = getDepts();
 
-  var rows = users.map(function (u) {
-    var d = dept(u.department);
-    var isSelf = u.id === me.id;
-    return '<tr>' +
-      '<td><div style="display:flex;align-items:center;gap:10px">' +
-      '<div class="avatar" style="background:' + avatarBg(u.name) + ';width:32px;height:32px;font-size:13px;flex-shrink:0">' + initials(u.name) + '</div>' +
-      '<div><div style="font-weight:600;font-size:14px">' + esc(u.name) + (isSelf ? ' <span style="font-size:10px;color:var(--text-light)">(você)</span>' : '') + '</div>' +
-      '<div style="font-size:12px;color:var(--text-secondary)">' + esc(u.email) + '</div></div></div></td>' +
-      '<td><span class="badge" style="background:' + d.color + '">' + d.icon + ' ' + d.name + '</span></td>' +
-      '<td><span style="font-size:13px">' + esc(u.role || '—') + '</span></td>' +
-      '<td>' + (u.isAdmin ? '<span class="badge" style="background:var(--brand)">Admin</span>' : '<span style="font-size:12px;color:var(--text-light)">Usuário</span>') + '</td>' +
-      '<td style="white-space:nowrap">' +
-      '<button class="btn-secondary admin-edit-user" data-uid="' + u.id + '" style="padding:0 10px;height:28px;font-size:12px;margin-right:4px">' + ICONS.edit + ' Editar</button>' +
-      (!isSelf ? '<button class="btn-secondary admin-del-user" data-uid="' + u.id + '" style="padding:0 10px;height:28px;font-size:12px;color:var(--red)">' + ICONS.trash + '</button>' : '') +
-      '</td>' +
-      '</tr>';
-  }).join('');
+  // ── filter state ──
+  var q = (App.userSearch || '').toLowerCase().trim();
+  var fDept = App.userFilterDept || '';
+  var fRole = App.userFilterRole || '';
+  var sortBy = App.userSort || 'name';
 
-  el.innerHTML =
-    '<div class="admin-section">' +
-    '<div class="admin-section-head">' +
-    '<h3>Usuários (' + users.length + ')</h3>' +
-    '</div>' +
-    '<table class="admin-table"><thead><tr><th>Usuário</th><th>Setor</th><th>Cargo</th><th>Perfil</th><th style="width:140px">Ações</th></tr></thead>' +
-    '<tbody>' + rows + '</tbody></table>' +
+  var filtered = allUsers.filter(function (u) {
+    if (q && (u.name || '').toLowerCase().indexOf(q) < 0 && (u.email || '').toLowerCase().indexOf(q) < 0 && (u.role || '').toLowerCase().indexOf(q) < 0) return false;
+    if (fDept && u.department !== fDept) return false;
+    if (fRole === 'admin' && !u.isAdmin) return false;
+    if (fRole === 'user' && u.isAdmin) return false;
+    return true;
+  });
+
+  filtered.sort(function (a, b) {
+    if (sortBy === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+    if (sortBy === 'oldest') return (a.createdAt || 0) - (b.createdAt || 0);
+    if (sortBy === 'dept')   return (a.department || '').localeCompare(b.department || '');
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  // ── kpi counters ──
+  var adminCount = allUsers.filter(function (u) { return u.isAdmin; }).length;
+  var deptSet = {};
+  allUsers.forEach(function (u) { if (u.department) deptSet[u.department] = 1; });
+  var deptCount = Object.keys(deptSet).length;
+
+  // open tickets per user
+  var ticketMap = {};
+  Store.boards().forEach(function (b) {
+    b.lists.forEach(function (l) {
+      var isDone = /conclu|done|encerr/i.test(l.name);
+      l.cards.forEach(function (c) {
+        if (!isDone && c.assigneeId) ticketMap[c.assigneeId] = (ticketMap[c.assigneeId] || 0) + 1;
+      });
+    });
+  });
+
+  // ── dept opts ──
+  var deptFilterOpts = '<option value="">Todos os setores</option>' +
+    depts.map(function (d) { return '<option value="' + d.id + '"' + (fDept === d.id ? ' selected' : '') + '>' + d.icon + ' ' + d.name + '</option>'; }).join('');
+
+  // ── kpi bar ──
+  var kpiBar =
+    '<div class="usr-kpi-bar">' +
+    '<div class="usr-kpi-card"><div class="usr-kpi-value">' + allUsers.length + '</div><div class="usr-kpi-label">Total de usuários</div></div>' +
+    '<div class="usr-kpi-card"><div class="usr-kpi-value" style="color:var(--brand)">' + adminCount + '</div><div class="usr-kpi-label">Administradores</div></div>' +
+    '<div class="usr-kpi-card"><div class="usr-kpi-value">' + (allUsers.length - adminCount) + '</div><div class="usr-kpi-label">Colaboradores</div></div>' +
+    '<div class="usr-kpi-card"><div class="usr-kpi-value">' + deptCount + '</div><div class="usr-kpi-label">Setores ativos</div></div>' +
     '</div>';
 
+  // ── toolbar ──
+  var toolbar =
+    '<div class="usr-toolbar">' +
+    '<div class="usr-search-wrap">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+    '<input type="text" id="usr-search" class="usr-search-input" placeholder="Buscar por nome, e-mail ou cargo…" value="' + esc(App.userSearch || '') + '">' +
+    (q ? '<button id="usr-search-clear" class="usr-search-clear">✕</button>' : '') +
+    '</div>' +
+    '<select id="usr-filter-dept" class="filter-select" style="height:36px;font-size:12px;min-width:150px">' + deptFilterOpts + '</select>' +
+    '<select id="usr-filter-role" class="filter-select" style="height:36px;font-size:12px;min-width:120px">' +
+    '<option value=""' + (!fRole ? ' selected' : '') + '>Todos os perfis</option>' +
+    '<option value="admin"' + (fRole === 'admin' ? ' selected' : '') + '>🛡 Admins</option>' +
+    '<option value="user"' + (fRole === 'user' ? ' selected' : '') + '>👤 Colaboradores</option>' +
+    '</select>' +
+    '<select id="usr-sort" class="filter-select" style="height:36px;font-size:12px;min-width:130px">' +
+    '<option value="name"' + (sortBy === 'name' ? ' selected' : '') + '>A → Z</option>' +
+    '<option value="newest"' + (sortBy === 'newest' ? ' selected' : '') + '>Mais recentes</option>' +
+    '<option value="oldest"' + (sortBy === 'oldest' ? ' selected' : '') + '>Mais antigos</option>' +
+    '<option value="dept"' + (sortBy === 'dept' ? ' selected' : '') + '>Setor</option>' +
+    '</select>' +
+    '<div style="margin-left:auto">' +
+    '<button class="btn-primary" id="btn-add-user" style="height:36px;padding:0 16px;font-size:13px;white-space:nowrap">+ Novo Usuário</button>' +
+    '</div>' +
+    '</div>';
+
+  // ── bulk bar ──
+  var sel = App.selectedUsers || [];
+  var bulkBar = sel.length > 0
+    ? '<div class="usr-bulk-bar">' +
+      '<span class="usr-bulk-count">' + sel.length + ' usuário' + (sel.length > 1 ? 's' : '') + ' selecionado' + (sel.length > 1 ? 's' : '') + '</span>' +
+      '<button class="btn-secondary usr-bulk-btn" id="usr-bulk-deselect">✕ Desmarcar</button>' +
+      '<button class="btn-secondary usr-bulk-btn" id="usr-bulk-del" style="color:var(--red)">🗑 Excluir selecionados</button>' +
+      '</div>'
+    : '';
+
+  // ── table rows ──
+  var rows = filtered.length === 0
+    ? '<tr><td colspan="7"><div class="usr-empty"><span style="font-size:32px;opacity:.4">👥</span><div>Nenhum usuário encontrado</div></div></td></tr>'
+    : filtered.map(function (u) {
+        var d = dept(u.department);
+        var isSelf = u.id === me.id;
+        var tickets = ticketMap[u.id] || 0;
+        var createdFmt = u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+        var isSelected = sel.indexOf(u.id) >= 0;
+        return '<tr class="usr-row' + (isSelected ? ' usr-row-selected' : '') + '" data-uid="' + u.id + '">' +
+          '<td class="usr-td-check"><input type="checkbox" class="usr-checkbox" data-uid="' + u.id + '"' + (isSelected ? ' checked' : '') + (isSelf ? ' disabled title="Você não pode se selecionar"' : '') + '></td>' +
+          '<td>' +
+          '<div class="usr-identity">' +
+          '<div class="avatar" style="background:' + avatarBg(u.name) + ';width:36px;height:36px;font-size:13px;flex-shrink:0">' + initials(u.name) + '</div>' +
+          '<div class="usr-identity-text">' +
+          '<div class="usr-name">' + esc(u.name) + (isSelf ? ' <span class="usr-you-tag">você</span>' : '') + '</div>' +
+          '<div class="usr-email">' + esc(u.email) + '</div>' +
+          '</div>' +
+          '</div>' +
+          '</td>' +
+          '<td><span class="usr-dept-badge" style="background:' + d.color + '22;color:' + d.color + ';border:1px solid ' + d.color + '44">' + d.icon + ' ' + d.name + '</span></td>' +
+          '<td><span class="usr-role-label">' + esc(u.role || '—') + '</span></td>' +
+          '<td>' +
+          (u.isAdmin
+            ? '<span class="usr-profile-badge usr-profile-admin">🛡 Admin</span>'
+            : '<span class="usr-profile-badge usr-profile-user">👤 Colaborador</span>') +
+          '</td>' +
+          '<td class="usr-td-tickets">' +
+          (tickets > 0 ? '<span class="usr-ticket-count">' + tickets + '</span>' : '<span style="color:var(--text-light);font-size:12px">—</span>') +
+          '</td>' +
+          '<td class="usr-td-date">' + createdFmt + '</td>' +
+          '<td class="usr-td-actions">' +
+          '<button class="usr-action-btn admin-edit-user" data-uid="' + u.id + '" title="Editar usuário">✏️</button>' +
+          (!isSelf ? '<button class="usr-action-btn admin-del-user" data-uid="' + u.id + '" title="Excluir usuário">🗑</button>' : '') +
+          '</td>' +
+          '</tr>';
+      }).join('');
+
+  el.innerHTML =
+    '<div class="usr-module">' +
+    kpiBar +
+    toolbar +
+    bulkBar +
+    '<div class="usr-table-wrap">' +
+    '<table class="admin-table usr-table">' +
+    '<thead><tr>' +
+    '<th class="usr-td-check"><input type="checkbox" id="usr-check-all" title="Selecionar todos"></th>' +
+    '<th>Usuário</th>' +
+    '<th>Setor</th>' +
+    '<th>Cargo</th>' +
+    '<th>Perfil</th>' +
+    '<th class="usr-td-tickets" title="Tickets abertos atribuídos">🎫</th>' +
+    '<th class="usr-td-date">Criado em</th>' +
+    '<th class="usr-td-actions">Ações</th>' +
+    '</tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table>' +
+    '</div>' +
+    '<div class="usr-footer">Exibindo ' + filtered.length + ' de ' + allUsers.length + ' usuário' + (allUsers.length !== 1 ? 's' : '') + '</div>' +
+    '</div>';
+
+  // ── events ──
+  var searchInp = el.querySelector('#usr-search');
+  if (searchInp) {
+    searchInp.oninput = _debounce(function () { App.userSearch = searchInp.value; renderAdminUsers(el); }, 220);
+    searchInp.onkeydown = function (e) { if (e.key === 'Escape') { App.userSearch = ''; renderAdminUsers(el); } };
+  }
+  var searchClear = el.querySelector('#usr-search-clear');
+  if (searchClear) searchClear.onclick = function () { App.userSearch = ''; renderAdminUsers(el); };
+
+  var deptSel = el.querySelector('#usr-filter-dept');
+  if (deptSel) deptSel.onchange = function () { App.userFilterDept = this.value; renderAdminUsers(el); };
+
+  var roleSel = el.querySelector('#usr-filter-role');
+  if (roleSel) roleSel.onchange = function () { App.userFilterRole = this.value; renderAdminUsers(el); };
+
+  var sortSel = el.querySelector('#usr-sort');
+  if (sortSel) sortSel.onchange = function () { App.userSort = this.value; renderAdminUsers(el); };
+
+  var btnAdd = el.querySelector('#btn-add-user');
+  if (btnAdd) btnAdd.onclick = function () { showAddUserModal(el); };
+
+  // checkboxes
+  var checkAll = el.querySelector('#usr-check-all');
+  if (checkAll) {
+    checkAll.onchange = function () {
+      if (this.checked) {
+        App.selectedUsers = filtered.filter(function (u) { return u.id !== me.id; }).map(function (u) { return u.id; });
+      } else {
+        App.selectedUsers = [];
+      }
+      renderAdminUsers(el);
+    };
+  }
+  el.querySelectorAll('.usr-checkbox').forEach(function (cb) {
+    cb.onchange = function () {
+      var uid = cb.dataset.uid;
+      if (cb.checked) {
+        if (App.selectedUsers.indexOf(uid) < 0) App.selectedUsers.push(uid);
+      } else {
+        App.selectedUsers = App.selectedUsers.filter(function (id) { return id !== uid; });
+      }
+      renderAdminUsers(el);
+    };
+  });
+
+  // bulk actions
+  var btnDesel = el.querySelector('#usr-bulk-deselect');
+  if (btnDesel) btnDesel.onclick = function () { App.selectedUsers = []; renderAdminUsers(el); };
+
+  var btnBulkDel = el.querySelector('#usr-bulk-del');
+  if (btnBulkDel) btnBulkDel.onclick = function () {
+    var toDelete = (App.selectedUsers || []).filter(function (id) { return id !== me.id; });
+    if (!toDelete.length) return;
+    if (!confirm('Excluir ' + toDelete.length + ' usuário(s) selecionado(s)? Esta ação não pode ser desfeita.')) return;
+    toDelete.forEach(function (id) {
+      var u = Store.user(id);
+      if (u) Store.audit('excluiu usuário', u.name);
+      Store.deleteUser(id);
+    });
+    App.selectedUsers = [];
+    showToast(toDelete.length + ' usuário(s) excluído(s).', 'success');
+    renderAdminUsers(el);
+  };
+
   el.querySelectorAll('.admin-edit-user').forEach(function (btn) {
-    btn.onclick = function () { showEditUserModal(btn.dataset.uid); };
+    btn.onclick = function (e) { e.stopPropagation(); showEditUserModal(btn.dataset.uid, el); };
   });
   el.querySelectorAll('.admin-del-user').forEach(function (btn) {
-    btn.onclick = function () {
+    btn.onclick = function (e) {
+      e.stopPropagation();
       var u = Store.user(btn.dataset.uid);
       if (!u) return;
       if (confirm('Excluir usuário "' + u.name + '"? Esta ação não pode ser desfeita.')) {
         Store.audit('excluiu usuário', u.name);
         Store.deleteUser(btn.dataset.uid);
         showToast('Usuário excluído.', 'success');
-        renderAdmin();
+        renderAdminUsers(el);
       }
     };
   });
 }
 
-function showEditUserModal(userId) {
+// ─── MODAL: NOVO USUÁRIO ─────────────────────────────────────
+function showAddUserModal(el) {
+  var old = document.getElementById('popup-overlay');
+  if (old) old.remove();
+
+  var deptOpts = getDepts().map(function (d) {
+    return '<option value="' + d.id + '">' + d.icon + ' ' + d.name + '</option>';
+  }).join('');
+
+  var popup = document.createElement('div');
+  popup.className = 'popup-overlay';
+  popup.id = 'popup-overlay';
+  popup.innerHTML =
+    '<div class="popup-box usr-modal-box">' +
+    '<div class="usr-modal-header">' +
+    '<div class="usr-modal-avatar" id="au-avatar-preview" style="background:#3B82F6">AU</div>' +
+    '<div><h3 class="usr-modal-title">Novo Usuário</h3><p class="usr-modal-sub">Preencha os dados para criar a conta</p></div>' +
+    '</div>' +
+    '<div class="usr-modal-body">' +
+    '<div class="usr-modal-section-title">Informações pessoais</div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="field-label">Nome completo *</label><input class="form-input" id="au-name" placeholder="João Silva" autocomplete="off"></div>' +
+    '<div class="form-group"><label class="field-label">E-mail *</label><input class="form-input" type="email" id="au-email" placeholder="joao@empresa.com" autocomplete="off"></div>' +
+    '</div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="field-label">Telefone</label><input class="form-input" id="au-phone" placeholder="(11) 99999-9999"></div>' +
+    '<div class="form-group"><label class="field-label">Cargo *</label><input class="form-input" id="au-role" placeholder="Analista de TI"></div>' +
+    '</div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="field-label">Setor *</label><select class="form-select" id="au-dept">' + deptOpts + '</select></div>' +
+    '<div class="form-group"><label class="field-label">Senha *</label>' +
+    '<div style="position:relative">' +
+    '<input class="form-input" type="password" id="au-pw" autocomplete="new-password" placeholder="Mínimo 8 caracteres" style="padding-right:38px">' +
+    '<button type="button" id="au-pw-toggle" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-secondary)" title="Mostrar senha">👁</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="usr-modal-section-title" style="margin-top:16px">Observações</div>' +
+    '<textarea class="form-input" id="au-notes" rows="2" placeholder="Informações adicionais sobre o usuário…" style="resize:vertical;min-height:60px"></textarea>' +
+    '<div class="usr-modal-section-title" style="margin-top:16px">Permissões</div>' +
+    '<div class="usr-permission-row">' +
+    '<div>' +
+    '<div class="usr-permission-title">Perfil Administrador</div>' +
+    '<div class="usr-permission-desc">Acesso completo ao painel de administração e configurações do sistema</div>' +
+    '</div>' +
+    '<label class="toggle-switch"><input type="checkbox" id="au-admin"><span class="toggle-slider"></span></label>' +
+    '</div>' +
+    '</div>' +
+    '<div class="usr-modal-footer">' +
+    '<button class="btn-secondary" id="au-cancel">Cancelar</button>' +
+    '<button class="btn-primary" id="au-save">Criar Usuário</button>' +
+    '</div>' +
+    '</div>';
+
+  document.body.appendChild(popup);
+
+  // Live avatar preview
+  var nameInp = popup.querySelector('#au-name');
+  var avatarPrev = popup.querySelector('#au-avatar-preview');
+  nameInp.oninput = function () {
+    avatarPrev.textContent = initials(nameInp.value) || 'AU';
+    avatarPrev.style.background = nameInp.value ? avatarBg(nameInp.value) : '#3B82F6';
+  };
+
+  // Password toggle
+  popup.querySelector('#au-pw-toggle').onclick = function () {
+    var pwInp = popup.querySelector('#au-pw');
+    var showing = pwInp.type === 'text';
+    pwInp.type = showing ? 'password' : 'text';
+    this.textContent = showing ? '👁' : '🙈';
+  };
+
+  popup.querySelector('#au-cancel').onclick = function () { popup.remove(); };
+  popup.onclick = function (e) { if (e.target === popup) popup.remove(); };
+
+  popup.querySelector('#au-save').onclick = async function () {
+    var name  = (popup.querySelector('#au-name').value || '').trim();
+    var email = (popup.querySelector('#au-email').value || '').trim();
+    var pw    = (popup.querySelector('#au-pw').value || '');
+    var role  = (popup.querySelector('#au-role').value || '').trim() || 'Colaborador';
+    var deptId = popup.querySelector('#au-dept').value;
+    var isAdmin = popup.querySelector('#au-admin').checked;
+
+    if (!name)  { showToast('Informe o nome completo.', 'error'); popup.querySelector('#au-name').focus(); return; }
+    if (!email) { showToast('Informe o e-mail.', 'error'); popup.querySelector('#au-email').focus(); return; }
+    if (pw.length < 8) { showToast('Senha mínima: 8 caracteres.', 'error'); popup.querySelector('#au-pw').focus(); return; }
+
+    var saveBtn = popup.querySelector('#au-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Criando…';
+
+    var created = await Store.addUser(name, email, pw, deptId, role, isAdmin);
+    if (!created) {
+      showToast('E-mail já cadastrado no sistema.', 'error');
+      saveBtn.disabled = false; saveBtn.textContent = 'Criar Usuário';
+      return;
+    }
+    // save extra fields
+    created.phone = (popup.querySelector('#au-phone').value || '').trim();
+    created.notes = (popup.querySelector('#au-notes').value || '').trim();
+    Store.save();
+    Store.audit('criou usuário', name);
+    popup.remove();
+    showToast('Usuário "' + name + '" criado com sucesso!', 'success');
+    App.selectedUsers = [];
+    if (el) renderAdminUsers(el);
+  };
+}
+
+// ─── MODAL: EDITAR USUÁRIO ───────────────────────────────────
+function showEditUserModal(userId, elRef) {
   var u = Store.user(userId);
   if (!u) return;
   var me = Store.me();
@@ -2960,54 +3694,141 @@ function showEditUserModal(userId) {
     return '<option value="' + d.id + '"' + (d.id === u.department ? ' selected' : '') + '>' + d.icon + ' ' + d.name + '</option>';
   }).join('');
 
+  // open tickets for this user
+  var openTickets = 0;
+  Store.boards().forEach(function (b) {
+    b.lists.forEach(function (l) {
+      if (!/conclu|done|encerr/i.test(l.name)) {
+        l.cards.forEach(function (c) { if (c.assigneeId === u.id) openTickets++; });
+      }
+    });
+  });
+
   var popup = document.createElement('div');
   popup.className = 'popup-overlay';
   popup.id = 'popup-overlay';
   popup.innerHTML =
-    '<div class="popup-box" style="max-width:440px">' +
-    '<h3 style="margin:0 0 20px">Editar Usuário</h3>' +
+    '<div class="popup-box usr-modal-box">' +
+    '<div class="usr-modal-header">' +
+    '<div class="usr-modal-avatar" id="eu-avatar-preview" style="background:' + avatarBg(u.name) + '">' + initials(u.name) + '</div>' +
+    '<div style="flex:1;min-width:0">' +
+    '<h3 class="usr-modal-title">Editar Usuário</h3>' +
+    '<p class="usr-modal-sub">' + esc(u.email) + ' · ' +
+    (openTickets > 0 ? '<span style="color:var(--brand);font-weight:600">' + openTickets + ' ticket' + (openTickets > 1 ? 's' : '') + ' aberto' + (openTickets > 1 ? 's' : '') + '</span>' : 'Nenhum ticket aberto') +
+    '</p>' +
+    '</div>' +
+    '<div class="usr-modal-header-badges">' +
+    (u.isAdmin ? '<span class="usr-profile-badge usr-profile-admin">🛡 Admin</span>' : '<span class="usr-profile-badge usr-profile-user">👤 Colaborador</span>') +
+    (isSelf ? '<span class="usr-you-tag" style="font-size:11px;padding:2px 8px">você</span>' : '') +
+    '</div>' +
+    '</div>' +
+    '<div class="usr-modal-body">' +
+    '<div class="usr-modal-section-title">Informações pessoais</div>' +
     '<div class="form-row">' +
-    '<div class="form-group"><label>Nome</label><input class="form-input" id="eu-name" value="' + esc(u.name) + '"></div>' +
-    '<div class="form-group"><label>Email</label><input class="form-input" type="email" id="eu-email" value="' + esc(u.email) + '"></div>' +
+    '<div class="form-group"><label class="field-label">Nome completo</label><input class="form-input" id="eu-name" value="' + esc(u.name) + '"></div>' +
+    '<div class="form-group"><label class="field-label">E-mail</label><input class="form-input" type="email" id="eu-email" value="' + esc(u.email) + '"></div>' +
     '</div>' +
     '<div class="form-row">' +
-    '<div class="form-group"><label>Cargo</label><input class="form-input" id="eu-role" value="' + esc(u.role || '') + '"></div>' +
-    '<div class="form-group"><label>Setor</label><select class="form-select" id="eu-dept">' + deptOpts + '</select></div>' +
+    '<div class="form-group"><label class="field-label">Telefone</label><input class="form-input" id="eu-phone" value="' + esc(u.phone || '') + '" placeholder="(11) 99999-9999"></div>' +
+    '<div class="form-group"><label class="field-label">Cargo</label><input class="form-input" id="eu-role" value="' + esc(u.role || '') + '"></div>' +
     '</div>' +
-    '<div class="form-group"><label>Nova Senha <span style="font-size:11px;color:var(--text-light)">(deixe em branco para não alterar)</span></label>' +
-    '<input class="form-input" type="password" id="eu-pw" autocomplete="new-password" placeholder="••••••••"></div>' +
-    (!isSelf ? '<div class="form-group" style="display:flex;align-items:center;gap:10px;padding:10px 0">' +
-    '<label class="admin-toggle-label">Perfil Admin</label>' +
-    '<label class="toggle-switch"><input type="checkbox" id="eu-admin"' + (u.isAdmin ? ' checked' : '') + '><span class="toggle-slider"></span></label>' +
-    '</div>' : '') +
-    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="field-label">Setor</label><select class="form-select" id="eu-dept">' + deptOpts + '</select></div>' +
+    '<div class="form-group"><label class="field-label">Nova senha <span style="font-size:11px;font-weight:400;color:var(--text-light)">(deixe vazio para não alterar)</span></label>' +
+    '<div style="position:relative">' +
+    '<input class="form-input" type="password" id="eu-pw" autocomplete="new-password" placeholder="••••••••" style="padding-right:38px">' +
+    '<button type="button" id="eu-pw-toggle" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-secondary)" title="Mostrar senha">👁</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="usr-modal-section-title" style="margin-top:16px">Observações</div>' +
+    '<textarea class="form-input" id="eu-notes" rows="2" placeholder="Informações adicionais…" style="resize:vertical;min-height:60px">' + esc(u.notes || '') + '</textarea>' +
+    (!isSelf ?
+      '<div class="usr-modal-section-title" style="margin-top:16px">Permissões</div>' +
+      '<div class="usr-permission-row">' +
+      '<div>' +
+      '<div class="usr-permission-title">Perfil Administrador</div>' +
+      '<div class="usr-permission-desc">Acesso completo ao painel de administração e configurações do sistema</div>' +
+      '</div>' +
+      '<label class="toggle-switch"><input type="checkbox" id="eu-admin"' + (u.isAdmin ? ' checked' : '') + '><span class="toggle-slider"></span></label>' +
+      '</div>'
+    : '') +
+    '</div>' +
+    '<div class="usr-modal-footer">' +
+    (!isSelf ? '<button class="btn-secondary" id="eu-delete" style="color:var(--red)">🗑 Excluir</button>' : '<div></div>') +
+    '<div style="display:flex;gap:8px">' +
     '<button class="btn-secondary" id="eu-cancel">Cancelar</button>' +
-    '<button class="btn-primary" id="eu-save">Salvar</button>' +
-    '</div></div>';
+    '<button class="btn-primary" id="eu-save">💾 Salvar</button>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   document.body.appendChild(popup);
-  document.getElementById('eu-cancel').onclick = function () { popup.remove(); };
+
+  // Live avatar preview on name change
+  var nameInp = popup.querySelector('#eu-name');
+  var avatarPrev = popup.querySelector('#eu-avatar-preview');
+  nameInp.oninput = function () {
+    avatarPrev.textContent = initials(nameInp.value) || '?';
+    avatarPrev.style.background = avatarBg(nameInp.value);
+  };
+
+  // Password toggle
+  popup.querySelector('#eu-pw-toggle').onclick = function () {
+    var pwInp = popup.querySelector('#eu-pw');
+    var showing = pwInp.type === 'text';
+    pwInp.type = showing ? 'password' : 'text';
+    this.textContent = showing ? '👁' : '🙈';
+  };
+
+  popup.querySelector('#eu-cancel').onclick = function () { popup.remove(); };
   popup.onclick = function (e) { if (e.target === popup) popup.remove(); };
 
-  document.getElementById('eu-save').onclick = async function () {
-    var pw = document.getElementById('eu-pw').value;
+  var delBtn = popup.querySelector('#eu-delete');
+  if (delBtn) {
+    delBtn.onclick = function () {
+      if (confirm('Excluir "' + u.name + '"? Esta ação não pode ser desfeita.')) {
+        Store.audit('excluiu usuário', u.name);
+        Store.deleteUser(u.id);
+        showToast('Usuário excluído.', 'success');
+        popup.remove();
+        var el = document.getElementById('admin-content');
+        if (el) renderAdminUsers(el);
+      }
+    };
+  }
+
+  popup.querySelector('#eu-save').onclick = async function () {
+    var pw = popup.querySelector('#eu-pw').value;
     if (pw && pw.length < 8) { showToast('Senha mínima: 8 caracteres.', 'error'); return; }
-    var btn = document.getElementById('eu-save');
-    btn.disabled = true; btn.textContent = 'Salvando...';
+    var saveBtn = popup.querySelector('#eu-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…';
+
     var updates = {
-      name: document.getElementById('eu-name').value.trim() || u.name,
-      email: document.getElementById('eu-email').value.trim() || u.email,
-      role: document.getElementById('eu-role').value.trim(),
-      department: document.getElementById('eu-dept').value,
+      name:       (popup.querySelector('#eu-name').value || '').trim() || u.name,
+      email:      (popup.querySelector('#eu-email').value || '').trim() || u.email,
+      role:       (popup.querySelector('#eu-role').value || '').trim(),
+      department: popup.querySelector('#eu-dept').value,
     };
     if (pw) updates.newPw = pw;
-    var adminChk = document.getElementById('eu-admin');
+    var adminChk = popup.querySelector('#eu-admin');
     if (adminChk) updates.isAdmin = adminChk.checked;
+
     await Store.updateUser(userId, updates);
+
+    // extra fields
+    var freshUser = Store.user(userId);
+    if (freshUser) {
+      freshUser.phone = (popup.querySelector('#eu-phone').value || '').trim();
+      freshUser.notes = (popup.querySelector('#eu-notes').value || '').trim();
+      Store.save();
+    }
+
     Store.audit('editou usuário', updates.name || '');
     popup.remove();
     showToast('Usuário atualizado!', 'success');
-    renderAdmin();
+    var el = elRef || document.getElementById('admin-content');
+    if (el) renderAdminUsers(el);
   };
 }
 
@@ -5444,7 +6265,11 @@ function showAddCardForm(listId, preFillDueDate) {
   footer.innerHTML =
     '<div class="inline-form nc-form">' +
     tmplHtml +
-    '<input type="text" id="new-card-ta" class="nc-title-input" placeholder="Título do ticket…" autocomplete="off">' +
+    '<div style="position:relative;">' +
+    '<input type="text" id="new-card-ta" class="nc-title-input" placeholder="Título do ticket…" autocomplete="off" style="padding-right:130px;">' +
+    '<button id="nc-ia-btn" type="button" title="Triagem automática com IA" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);height:26px;padding:0 10px;font-size:11px;font-weight:600;border-radius:6px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;">✦ Triagem IA</button>' +
+    '</div>' +
+    '<div id="nc-ia-card" style="display:none;"></div>' +
     '<div class="inline-form-meta">' +
     priPickerHtml +
     '<input type="date" id="new-card-due" class="inline-due-input" title="Vencimento"' + (preFillDueDate ? ' value="' + preFillDueDate + '"' : '') + '>' +
@@ -5457,6 +6282,156 @@ function showAddCardForm(listId, preFillDueDate) {
 
   var ta = document.getElementById('new-card-ta');
   ta.focus();
+
+  // ── IA Triage button ────────────────────────────────────
+  var _iaResult = null; // stores last IA suggestion
+  document.getElementById('nc-ia-btn').onclick = function () {
+    var titulo = ta.value.trim();
+    if (!titulo) { ta.focus(); ta.classList.add('nc-input-error'); setTimeout(function () { ta.classList.remove('nc-input-error'); }, 800); return; }
+    if (typeof API === 'undefined' || !Auth.isLoggedIn()) { showToast('API indisponível.', 'error'); return; }
+
+    var btn = document.getElementById('nc-ia-btn');
+    var card = document.getElementById('nc-ia-card');
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:4px;"></span> Analisando…';
+    card.style.display = 'none';
+
+    API.ia.triar(titulo, '').then(function (r) {
+      btn.disabled = false;
+      btn.innerHTML = '✦ Triagem IA';
+      if (!r || !r.success) { showToast('Erro na triagem IA.', 'error'); return; }
+      _iaResult = r.data;
+
+      // Map prioridade backend → frontend priority id
+      var priMap = { baixa: 'low', media: 'medium', alta: 'high', critica: 'urgent' };
+      var priId  = priMap[_iaResult.prioridade] || 'medium';
+
+      // Busca artigos KB relacionados em paralelo
+      var kwBusca = (_iaResult.palavras_chave || []).join(' ') || titulo;
+      var kbPromise = (typeof API.kb !== 'undefined')
+        ? API.kb.listar({ busca: kwBusca }).catch(function () { return null; })
+        : Promise.resolve(null);
+
+      kbPromise.then(function (kbRes) {
+        var kbArtigos = (kbRes && kbRes.success && kbRes.data) ? kbRes.data.slice(0, 3) : [];
+        var card2 = document.getElementById('nc-ia-card');
+        if (!card2) return;
+
+        var catColors = { 'Suporte':'#3B82F6','Manutenção':'#F97316','Solicitação':'#8B5CF6','Incidente':'#EF4444','Melhoria':'#22C55E','Acesso':'#EAB308','Outro':'#6B7280' };
+        var priColors = { low:'#22C55E', medium:'#EAB308', high:'#F97316', urgent:'#EF4444' };
+        var priLabels = { low:'Baixa', medium:'Média', high:'Alta', urgent:'Crítica' };
+        var catCol = catColors[_iaResult.categoria] || '#6B7280';
+        var priCol = priColors[priId] || '#EAB308';
+
+        var kbHtml = '';
+        if (kbArtigos.length) {
+          kbHtml = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">' +
+            '<div style="font-size:10px;font-weight:600;color:var(--text-light);margin-bottom:4px;">📚 ARTIGOS RELACIONADOS</div>' +
+            kbArtigos.map(function (a) {
+              return '<div style="font-size:12px;color:var(--brand);cursor:pointer;padding:2px 0;text-decoration:underline;text-underline-offset:2px;" onclick="_kbOpenArticle(' + a.id + ')">' + esc(a.titulo) + '</div>';
+            }).join('') +
+            '</div>';
+        }
+
+        card2.style.display = 'block';
+        card2.innerHTML =
+          '<div style="margin:8px 0 4px;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.08));border:1px solid rgba(139,92,246,0.25);border-radius:10px;padding:12px 14px;">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">' +
+          '<span style="font-size:12px;font-weight:700;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">✦ Sugestão da IA</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;font-style:italic;">"' + esc(_iaResult.resumo) + '"</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">' +
+          '<span style="padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:' + catCol + '22;color:' + catCol + ';border:1px solid ' + catCol + '44;">' + esc(_iaResult.categoria) + '</span>' +
+          '<span style="padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:' + priCol + '22;color:' + priCol + ';border:1px solid ' + priCol + '44;">⬆ ' + priLabels[priId] + '</span>' +
+          '</div>' +
+          kbHtml +
+          '<div style="display:flex;gap:6px;margin-top:10px;">' +
+          '<button id="nc-ia-accept" type="button" style="flex:1;height:28px;border-radius:6px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">✓ Aplicar sugestões</button>' +
+          '<button id="nc-ia-dismiss" type="button" style="height:28px;width:32px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-light);cursor:pointer;font-size:14px;">×</button>' +
+          '</div>' +
+          '</div>';
+
+        document.getElementById('nc-ia-accept').onclick = function () {
+          // Apply priority
+          _ncPri = priId;
+          footer.querySelectorAll('.inline-pri-dot-btn').forEach(function (b2) {
+            b2.classList.toggle('nc-pri-sel', b2.dataset.pri === priId);
+          });
+          // Show badge on priority picker
+          var wrap = document.getElementById('nc-pri-wrap');
+          if (wrap && !wrap.querySelector('.ia-badge')) {
+            var badge = document.createElement('span');
+            badge.className = 'ia-badge';
+            badge.style.cssText = 'font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;margin-left:4px;';
+            badge.textContent = 'IA';
+            wrap.appendChild(badge);
+          }
+          card2.style.display = 'none';
+          showToast('Prioridade "' + priLabels[priId] + '" e categoria "' + _iaResult.categoria + '" aplicadas!', 'success');
+        };
+        document.getElementById('nc-ia-dismiss').onclick = function () { card2.style.display = 'none'; };
+      });
+    }).catch(function () {
+      btn.disabled = false;
+      btn.innerHTML = '✦ Triagem IA';
+      showToast('Erro ao conectar à IA.', 'error');
+    });
+  };
+  // ── end IA Triage ───────────────────────────────────────
+
+  // ── KB suggestion dropdown ──────────────────────────────
+  var _kbSugTimer = null;
+  ta.oninput = function() {
+    clearTimeout(_kbSugTimer);
+    var words = (ta.value || '').trim().split(/\s+/).filter(Boolean);
+    var drop = document.getElementById('kb-suggest-drop');
+    if (drop) drop.remove();
+    if (words.length < 3 || typeof API === 'undefined' || !Auth.isLoggedIn()) return;
+    _kbSugTimer = setTimeout(function() {
+      API.kb.listar({ busca: words.join(' ') }).then(function(r) {
+        var existingDrop = document.getElementById('kb-suggest-drop');
+        if (existingDrop) existingDrop.remove();
+        if (!r || !r.success || !r.data.length) return;
+        var items = r.data.slice(0, 3);
+        var dropEl = document.createElement('div');
+        dropEl.id = 'kb-suggest-drop';
+        dropEl.style.cssText = 'position:absolute;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);overflow:hidden;margin-top:4px;min-width:280px;';
+        dropEl.innerHTML =
+          '<div style="padding:6px 12px;font-size:11px;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);">📚 Artigos relacionados</div>' +
+          items.map(function(a) {
+            return '<div class="kb-sug-row" data-kbid="' + a.id + '" style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);transition:background 0.15s;" onmouseover="this.style.background=\'var(--border)\'" onmouseout="this.style.background=\'\'">' +
+              esc(a.titulo) + (a.categoria ? '<span style="margin-left:8px;font-size:10px;color:var(--text-light);">' + esc(a.categoria) + '</span>' : '') +
+              '</div>';
+          }).join('');
+        var taParent = ta.parentNode;
+        if (taParent) {
+          taParent.style.position = 'relative';
+          taParent.appendChild(dropEl);
+        }
+        dropEl.querySelectorAll('.kb-sug-row').forEach(function(row) {
+          row.onclick = function() {
+            var kbId = parseInt(row.dataset.kbid, 10);
+            if (kbId) _kbOpenArticle(kbId);
+          };
+        });
+      }).catch(function() {});
+    }, 350);
+  };
+
+  // Remove suggestion dropdown on Escape or blur
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var drop = document.getElementById('kb-suggest-drop');
+      if (drop) drop.remove();
+    }
+  });
+  ta.addEventListener('blur', function() {
+    setTimeout(function() {
+      var drop = document.getElementById('kb-suggest-drop');
+      if (drop) drop.remove();
+    }, 200);
+  });
+  // ── end KB suggestion ───────────────────────────────────
 
   // JS-driven priority selection
   footer.querySelectorAll('.inline-pri-dot-btn').forEach(function (btn) {
@@ -6567,6 +7542,12 @@ function renderQuality() {
   var main = document.getElementById('main-content');
   if (!main) return;
 
+  // ── Clear any existing auto-refresh timer ──────────────────
+  if (App._qualityRefreshTimer) {
+    clearInterval(App._qualityRefreshTimer);
+    App._qualityRefreshTimer = null;
+  }
+
   var period = App.qualityPeriod || '90';
   var now = Date.now();
   var since = period === '30'  ? now - 30  * 86400000
@@ -6696,7 +7677,7 @@ function renderQuality() {
     var cW = W - pl - pr, cH = H - pt - pb;
     var maxV = Math.max.apply(null, sortedMonths.map(function (m) { return Math.max(m.created, m.done, 1); }));
     var n = sortedMonths.length, gap = cW / n;
-    var barW = Math.max(5, Math.floor(gap / 3));
+    var barW = Math.min(24, Math.max(5, Math.floor(gap / 3)));
     var bars = '', labels = '', yAxis = '';
 
     for (var g = 0; g <= 4; g++) {
@@ -6714,10 +7695,13 @@ function renderQuality() {
       bars += '<rect x="' + (bx + 1)         + '" y="' + (pt + cH - dnH) + '" width="' + barW + '" height="' + dnH + '" fill="var(--green)" rx="2" opacity="0.75" title="Resolvidos: ' + m.done + '"/>';
       labels += '<text x="' + bx + '" y="' + (H - 5) + '" text-anchor="middle" font-size="9" fill="var(--text-secondary)">' + esc(m.label) + '</text>';
     }
-    return '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" style="display:block;overflow:visible">' +
+    // Técnica padding-bottom mantém aspect ratio sem distorcer texto
+    var aspectPct = (H / W * 100).toFixed(2);
+    return '<div style="position:relative;width:100%;padding-bottom:' + aspectPct + '%;overflow:hidden;">' +
+      '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
       yAxis + bars + labels +
       '<line x1="' + pl + '" y1="' + pt + '" x2="' + pl + '" y2="' + (pt + cH) + '" stroke="var(--border)" stroke-width="1"/>' +
-      '</svg>';
+      '</svg></div>';
   }
 
   // ── Analyst table ──────────────────────────────────────────
@@ -6781,6 +7765,9 @@ function renderQuality() {
     '<span title="Meta SLA configurada" style="color:var(--text-secondary)">Meta SLA: ' + qCfg.targetSla + '%</span> &nbsp;' +
     '<span title="Meta de resolução configurada" style="color:var(--text-secondary)">Meta Resolução: ' + qCfg.targetResol + '%</span>' +
     '</div>' +
+
+    // ── Real-time API section (skeleton, updated async) ─────
+    '<div id="q-api-section">' + _buildApiSkeleton() + '</div>' +
 
     // ── KPI Gauges ──────────────────────────────────────────
     '<div class="quality-kpis">' +
@@ -6899,4 +7886,291 @@ function renderQuality() {
   document.getElementById('q-print').onclick = function () {
     window.print();
   };
+
+  // ── Kick off real-time API fetch ───────────────────────────
+  var _rtStoreData = {
+    total:       total,
+    activeCards: activeCards,
+    doneCards:   doneCards,
+    mttrH:       mttrH,
+    slaRate:     slaRate,
+  };
+  _fetchAndRenderApiMetrics({ storeData: _rtStoreData });
+
+  // ── Auto-refresh every 60 s ────────────────────────────────
+  App._qualityRefreshTimer = setInterval(function () {
+    if (!document.getElementById('q-api-section')) {
+      clearInterval(App._qualityRefreshTimer);
+      App._qualityRefreshTimer = null;
+      return;
+    }
+    _fetchAndRenderApiMetrics({ storeData: _rtStoreData, silent: true });
+  }, 60000);
+}
+
+// ============================================================
+// REAL-TIME API METRICS HELPERS
+// ============================================================
+
+// ── Loading skeleton ────────────────────────────────────────
+function _buildApiSkeleton() {
+  var skBase = 'border-radius:8px;background:var(--border,#2a2a2a);animation:q-shimmer 1.5s infinite linear;background-size:200% 100%;';
+  return '<div class="q-realtime-section">' +
+    '<div class="q-realtime-header" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">' +
+    '<span style="font-size:13px;font-weight:600;color:var(--text-light)">⏳ Carregando métricas em tempo real…</span>' +
+    '</div>' +
+    '<div style="display:flex;gap:12px;">' +
+    '<div style="flex:1;height:80px;' + skBase + '"></div>' +
+    '<div style="flex:1;height:80px;' + skBase + '"></div>' +
+    '<div style="flex:1;height:80px;' + skBase + '"></div>' +
+    '<div style="flex:3;height:80px;' + skBase + '"></div>' +
+    '</div>' +
+    '</div>';
+}
+
+// ── Fetch + render orchestrator ─────────────────────────────
+function _fetchAndRenderApiMetrics(opts) {
+  opts = opts || {};
+  var el = document.getElementById('q-api-section');
+  if (!el) return;
+
+  if (!opts.silent) {
+    el.innerHTML = _buildApiSkeleton();
+  }
+
+  var storeData = opts.storeData || null;
+
+  // No API / not logged in → fallback immediately
+  if (typeof API === 'undefined' || typeof Auth === 'undefined' || !Auth.isLoggedIn()) {
+    el.innerHTML = _buildApiMetricsFallback(storeData);
+    var btnF = document.getElementById('q-rt-refresh');
+    if (btnF) btnF.onclick = function () { _fetchAndRenderApiMetrics({ storeData: storeData }); };
+    return;
+  }
+
+  var metricasResult = null;
+  var slaResult      = null;
+  var errored        = false;
+  var done           = 0;
+
+  function onDone() {
+    done++;
+    if (done < 2) return;
+    var el2 = document.getElementById('q-api-section');
+    if (!el2) return;
+    if (errored || !metricasResult) {
+      el2.innerHTML = _buildApiMetricsFallback(storeData);
+    } else {
+      el2.innerHTML = _buildApiMetricsHtml(metricasResult, slaResult);
+    }
+    var btn = document.getElementById('q-rt-refresh');
+    if (btn) btn.onclick = function () { _fetchAndRenderApiMetrics({ storeData: storeData }); };
+  }
+
+  API.dashboard.metricas()
+    .then(function (r) {
+      if (r && r.success) metricasResult = r.data;
+      else errored = true;
+      onDone();
+    })
+    .catch(function () { errored = true; onDone(); });
+
+  API.dashboard.sla()
+    .then(function (r) {
+      if (r && r.success) slaResult = r.data;
+      onDone();
+    })
+    .catch(function () { onDone(); });
+}
+
+// ── Build full real-time HTML from API data ─────────────────
+function _buildApiMetricsHtml(m, slaData) {
+  // Field names match the updated dashboardController response
+  var totais    = m.totais || {};
+  var abertos   = (totais.aberto || 0) + (totais.aguardando || 0);
+  var emAnd     = totais.em_andamento || 0;
+  var resolHoje = m.resolvidosHoje || 0;
+  var mttrH2    = m.tempoMedioResolucao || 0;
+  var mttrLb    = mttrH2 === 0 ? '—'
+                : mttrH2 < 1  ? Math.round(mttrH2 * 60) + 'min'
+                : mttrH2 < 24 ? mttrH2.toFixed(1) + 'h'
+                : (mttrH2 / 24).toFixed(1) + 'd';
+
+  var ts = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  // ── 7-day bar chart ──────────────────────────────────────
+  var vol7      = m.volume_7dias || [];
+  var chartHtml = _build7dayChart(vol7);
+
+  // ── Agent ranking ────────────────────────────────────────
+  var ranking  = m.ranking_agentes || [];
+  var rankHtml = '';
+  if (!ranking.length) {
+    rankHtml = '<p style="color:var(--text-light);font-size:13px;padding:12px 0">Sem dados disponíveis.</p>';
+  } else {
+    rankHtml = ranking.slice(0, 5).map(function (ag, i) {
+      var agMttr = ag.tempo_medio_horas ? Number(ag.tempo_medio_horas).toFixed(1) + 'h' : '—';
+      return '<div class="q-rank-row">' +
+        '<span class="q-rank-pos">' + (i + 1) + '</span>' +
+        '<span class="q-rank-name">' + esc(ag.nome || ag.agente || '—') + '</span>' +
+        '<span class="q-rank-val">' + (ag.resolvidos || 0) + '</span>' +
+        '<span class="q-rank-mttr">' + agMttr + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ── SLA semaphore ─────────────────────────────────────────
+  var priOrder  = ['critica', 'alta', 'media', 'baixa'];
+  var priLabels = { critica: 'Crítica', alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+  var slaRows   = '';
+  if (slaData && slaData.length) {
+    slaRows = priOrder.map(function (p) {
+      var row = null;
+      for (var si = 0; si < slaData.length; si++) { if (slaData[si].prioridade === p) { row = slaData[si]; break; } }
+      if (!row) return '';
+      var pct = Math.round(row.sla_rate || 0);
+      var dotCls = pct >= 80 ? 'q-sla-dot--ok' : pct >= 50 ? 'q-sla-dot--warn' : 'q-sla-dot--danger';
+      var col    = pct >= 80 ? '#22C55E'        : pct >= 50 ? '#EAB308'          : '#EF4444';
+      return '<div class="q-sla-row">' +
+        '<span class="q-sla-dot ' + dotCls + '"></span>' +
+        '<span class="q-sla-pri">' + priLabels[p] + '</span>' +
+        '<div class="q-sla-bar-track"><div class="q-sla-bar-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
+        '<span class="q-sla-pct" style="color:' + col + '">' + pct + '%</span>' +
+        '<span class="q-sla-sub">(' + (row.conformes || 0) + '/' + (row.total || 0) + ')</span>' +
+        '</div>';
+    }).join('');
+  } else {
+    slaRows = '<p style="color:var(--text-light);font-size:13px;padding:12px 0">Sem dados de SLA.</p>';
+  }
+
+  return '<div class="q-realtime-section">' +
+    '<div class="q-realtime-header">' +
+    '<span class="q-realtime-badge"><span class="q-rt-dot q-rt-dot--ok"></span> Tempo Real</span>' +
+    '<span class="q-realtime-ts">Atualizado às ' + ts + '</span>' +
+    '<button class="btn-secondary" id="q-rt-refresh" style="height:28px;padding:0 10px;font-size:12px">↻ Atualizar</button>' +
+    '</div>' +
+
+    // KPI row — inline flex para garantir layout independente de cache CSS
+    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">' +
+    _rtKpiCard('📋', abertos,   '#3B82F6', 'Abertos') +
+    _rtKpiCard('⚙️',  emAnd,    '#F97316', 'Em Andamento') +
+    _rtKpiCard('✅', resolHoje, '#22C55E', 'Resolvidos Hoje') +
+    _rtKpiCard('⏱',  mttrLb,   'var(--text-secondary,#888)', 'MTTR') +
+    '</div>' +
+
+    // Charts row — inline flex
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">' +
+
+    '<div class="quality-chart-card" style="flex:2;min-width:260px;">' +
+    '<div class="qchart-title">' + ICONS.activity + ' Volume — Últimos 7 dias</div>' +
+    '<div class="qchart-legend">' +
+    '<span class="qchart-dot" style="background:var(--brand)"></span> Criados &nbsp;&nbsp;' +
+    '<span class="qchart-dot" style="background:var(--green)"></span> Resolvidos' +
+    '</div>' +
+    chartHtml +
+    '</div>' +
+
+    '<div class="quality-chart-card" style="flex:1.5;min-width:200px;">' +
+    '<div class="qchart-title">' + ICONS.user + ' Ranking Agentes</div>' +
+    '<div style="padding:0">' +
+    '<div style="display:flex;gap:8px;padding:0 4px 8px;font-size:11px;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);margin-bottom:6px;">' +
+    '<span style="width:20px">#</span><span style="flex:1">Agente</span>' +
+    '<span style="width:54px;text-align:center">Resol.</span>' +
+    '<span style="width:42px;text-align:right">MTTR</span>' +
+    '</div>' +
+    rankHtml +
+    '</div>' +
+    '</div>' +
+
+    '<div class="quality-chart-card" style="flex:1.2;min-width:180px;">' +
+    '<div class="qchart-title">' + ICONS.shield + ' SLA por Prioridade</div>' +
+    '<div>' + slaRows + '</div>' +
+    '</div>' +
+
+    '</div>' + // charts row
+    '</div>';  // .q-realtime-section
+}
+
+// ── KPI card helper ─────────────────────────────────────────
+function _rtKpiCard(icon, val, color, label) {
+  return '<div style="flex:1;min-width:110px;background:var(--bg,#0d0d0d);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;">' +
+    '<div style="font-size:18px;margin-bottom:4px;">' + icon + '</div>' +
+    '<div style="font-size:26px;font-weight:800;line-height:1.1;margin-bottom:4px;color:' + color + '">' + val + '</div>' +
+    '<div style="font-size:11px;color:var(--text-light,#666);text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>' +
+    '</div>';
+}
+
+// ── 7-day SVG bar chart ─────────────────────────────────────
+function _build7dayChart(vol7) {
+  if (!vol7 || !vol7.length) {
+    return '<p style="color:var(--text-light);font-size:13px;padding:24px 0;text-align:center">Sem dados nos últimos 7 dias.</p>';
+  }
+  var W = 420, H = 100, pt = 8, pr = 8, pb = 24, pl = 28;
+  var cW = W - pl - pr, cH = H - pt - pb;
+  var maxV = 1;
+  for (var di = 0; di < vol7.length; di++) {
+    var dv = vol7[di];
+    if ((dv.total || 0) > maxV) maxV = dv.total;
+    if ((dv.resolvidos || 0) > maxV) maxV = dv.resolvidos;
+  }
+  var n = vol7.length, gap = cW / n;
+  var barW = Math.min(24, Math.max(4, Math.floor(gap / 3)));
+  var bars = '', labels = '', yAxis = '';
+  for (var g = 0; g <= 3; g++) {
+    var yy = pt + cH - Math.round(g / 3 * cH);
+    var vv = Math.round(g / 3 * maxV);
+    yAxis += '<line x1="' + pl + '" y1="' + yy + '" x2="' + (W - pr) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="1"/>';
+    yAxis += '<text x="' + (pl - 4) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="9" fill="var(--text-light)">' + vv + '</text>';
+  }
+  for (var i = 0; i < n; i++) {
+    var d7  = vol7[i];
+    var bx  = pl + i * gap + gap / 2;
+    var crH = Math.max(2, Math.round((d7.total || 0) / maxV * cH));
+    var dnH = Math.max(2, Math.round((d7.resolvidos || 0) / maxV * cH));
+    bars += '<rect x="' + (bx - barW - 1) + '" y="' + (pt + cH - crH) + '" width="' + barW + '" height="' + crH + '" fill="var(--brand)" rx="2" opacity="0.55"/>';
+    bars += '<rect x="' + (bx + 1) + '" y="' + (pt + cH - dnH) + '" width="' + barW + '" height="' + dnH + '" fill="var(--green)" rx="2" opacity="0.75"/>';
+    var dayLabel = d7.data ? d7.data.slice(5) : ('D' + (i + 1));
+    labels += '<text x="' + bx + '" y="' + (H - 4) + '" text-anchor="middle" font-size="9" fill="var(--text-secondary)">' + dayLabel + '</text>';
+  }
+  // Técnica padding-bottom: mantém aspect ratio sem distorcer texto
+  var aspectPct7 = (H / W * 100).toFixed(2);
+  return '<div style="position:relative;width:100%;padding-bottom:' + aspectPct7 + '%;overflow:hidden;">' +
+    '<svg style="position:absolute;top:0;left:0;width:100%;height:100%;" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+    yAxis + bars + labels +
+    '<line x1="' + pl + '" y1="' + pt + '" x2="' + pl + '" y2="' + (pt + cH) + '" stroke="var(--border)" stroke-width="1"/>' +
+    '</svg></div>';
+}
+
+// ── Fallback: render from Store data when API is unavailable ─
+function _buildApiMetricsFallback(storeData) {
+  var s = storeData || {};
+  var abertos = (s.activeCards || []).length;
+  var now2    = new Date();
+  var resolHoje = (s.doneCards || []).filter(function (c) {
+    if (!c.completedAt) return false;
+    var d = new Date(c.completedAt);
+    return d.getFullYear() === now2.getFullYear() && d.getMonth() === now2.getMonth() && d.getDate() === now2.getDate();
+  }).length;
+  var mttrH3  = s.mttrH || 0;
+  var mttrLb2 = mttrH3 === 0 ? '—'
+              : mttrH3 < 1  ? Math.round(mttrH3 * 60) + 'min'
+              : mttrH3 < 24 ? mttrH3.toFixed(1) + 'h'
+              : (mttrH3 / 24).toFixed(1) + 'd';
+  var slaRate2 = s.slaRate || 0;
+  var slaCol  = slaRate2 >= 80 ? '#22C55E' : slaRate2 >= 50 ? '#EAB308' : '#EF4444';
+
+  return '<div class="q-realtime-section" style="border-color:#EAB308;">' +
+    '<div class="q-realtime-header">' +
+    '<span class="q-realtime-badge">' +
+    '<span class="q-rt-dot" style="background:#EAB308;display:inline-block;width:8px;height:8px;border-radius:50%"></span> Dados locais (API indisponível)' +
+    '</span>' +
+    '<button class="btn-secondary" id="q-rt-refresh" style="height:28px;padding:0 10px;font-size:12px">↻ Tentar novamente</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+    _rtKpiCard('📋', abertos,       '#3B82F6', 'Abertos') +
+    _rtKpiCard('✅', resolHoje,     '#22C55E', 'Resolvidos Hoje') +
+    _rtKpiCard('⏱',  mttrLb2,      'var(--text-secondary,#888)', 'MTTR') +
+    _rtKpiCard('🎯', slaRate2 + '%', slaCol,  'SLA') +
+    '</div>' +
+    '</div>';
 }
