@@ -844,7 +844,27 @@ textarea::placeholder {
 }
 
 /* ═══════════════════════════════════════════════
-   16. LIMPEZA GERAL
+   16. LOGO — esconder header logo no desktop
+       (sidebar já exibe o logo; header logo é só
+        para mobile quando a sidebar está fechada)
+   ═══════════════════════════════════════════════ */
+
+/* Desktop: sidebar visível → logo no header some */
+@media (min-width: 769px) {
+  .header-logo {
+    display: none !important;
+  }
+}
+
+/* Mobile: sidebar oculta → logo no header aparece */
+@media (max-width: 768px) {
+  .header-logo {
+    display: flex !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   17. LIMPEZA GERAL
    ═══════════════════════════════════════════════ */
 
 /* Remover hover com transform em cards */
