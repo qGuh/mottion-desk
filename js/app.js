@@ -1622,12 +1622,16 @@ var App = {
 
 var $app = document.getElementById('app');
 
-// ─── BOOTSTRAP ──────────────────────────────────────────────
-if (localStorage.getItem('servicedesk_theme') === 'light') {
-  document.documentElement.removeAttribute('data-theme');
-} else if (localStorage.getItem('servicedesk_theme') === 'dark') {
-  document.documentElement.setAttribute('data-theme', 'dark');
-}
+// ─── BOOTSTRAP — theme ──────────────────────────────────────
+(function _bootstrapTheme() {
+  var saved = localStorage.getItem('md-theme') || localStorage.getItem('servicedesk_theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    // default: dark
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
 
 // ─── GUARD: Autenticação via API Backend ─────────────────────
 // Se api.js estiver carregado e não houver JWT, exibe a tela de login
@@ -2048,12 +2052,13 @@ function renderApp() {
   if (btnTheme) {
     btnTheme.onclick = function () {
       var html = document.documentElement;
-      if (html.getAttribute('data-theme') === 'dark') {
-        html.removeAttribute('data-theme');
-        localStorage.setItem('servicedesk_theme', 'light');
-      } else {
+      var isLight = html.getAttribute('data-theme') === 'light';
+      if (isLight) {
         html.setAttribute('data-theme', 'dark');
-        localStorage.setItem('servicedesk_theme', 'dark');
+        localStorage.setItem('md-theme', 'dark');
+      } else {
+        html.setAttribute('data-theme', 'light');
+        localStorage.setItem('md-theme', 'light');
       }
     };
   }
@@ -3480,7 +3485,7 @@ function renderAdminUsers(el) {
     '<th>Setor</th>' +
     '<th>Cargo</th>' +
     '<th>Perfil</th>' +
-    '<th class="usr-td-tickets" title="Tickets abertos atribuídos">🎫</th>' +
+    '<th class="usr-td-tickets" title="Tickets abertos atribuídos">#</th>' +
     '<th class="usr-td-date">Criado em</th>' +
     '<th class="usr-td-actions">Ações</th>' +
     '</tr></thead>' +
@@ -4431,9 +4436,9 @@ function renderDashboard() {
   // First-run onboarding
   if (bs.length === 0) {
     main.innerHTML =
-      '<div class="view-header"><div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + ' 👋</div></div>' +
+      '<div class="view-header"><div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + '</div></div>' +
       '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;gap:12px">' +
-      '<div style="font-size:64px;line-height:1;margin-bottom:8px">🚀</div>' +
+      '<div style="margin-bottom:8px">' + LOGO_42 + '</div>' +
       '<div style="font-size:22px;font-weight:700;color:var(--text)">Bem-vindo ao Mottion Desk!</div>' +
       '<div style="font-size:14px;color:var(--text-secondary);max-width:400px;line-height:1.6">Comece criando seu primeiro quadro para organizar e gerenciar tickets entre setores. É rápido e fácil.</div>' +
       '<div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center">' +
@@ -4441,18 +4446,18 @@ function renderDashboard() {
       '<button class="btn-secondary" id="onboard-cmd" style="font-size:14px;padding:10px 20px">' + ICONS.search + ' Explorar comandos</button>' +
       '</div>' +
       '<div style="margin-top:32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:600px;width:100%">' +
-      '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:left">' +
-      '<div style="font-size:20px;margin-bottom:6px">📋</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r-md);padding:16px;text-align:left">' +
+      '<div style="margin-bottom:6px;color:var(--brand);width:20px;height:20px">' + ICONS.board + '</div>' +
       '<div style="font-weight:600;font-size:13px;margin-bottom:4px">Quadros Kanban</div>' +
       '<div style="font-size:12px;color:var(--text-secondary)">Visualize o fluxo de trabalho em colunas arrastar-e-soltar</div>' +
       '</div>' +
-      '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:left">' +
-      '<div style="font-size:20px;margin-bottom:6px">⏱️</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r-md);padding:16px;text-align:left">' +
+      '<div style="margin-bottom:6px;color:var(--brand);width:20px;height:20px">' + ICONS.time + '</div>' +
       '<div style="font-weight:600;font-size:13px;margin-bottom:4px">SLA Automático</div>' +
       '<div style="font-size:12px;color:var(--text-secondary)">Prazos por prioridade com alertas de escalação automática</div>' +
       '</div>' +
-      '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:left">' +
-      '<div style="font-size:20px;margin-bottom:6px">📊</div>' +
+      '<div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r-md);padding:16px;text-align:left">' +
+      '<div style="margin-bottom:6px;color:var(--brand);width:20px;height:20px">' + ICONS.metrics + '</div>' +
       '<div style="font-weight:600;font-size:13px;margin-bottom:4px">Relatórios</div>' +
       '<div style="font-size:12px;color:var(--text-secondary)">Métricas de CSAT, SLA e exportação CSV em tempo real</div>' +
       '</div>' +
@@ -4728,7 +4733,7 @@ function renderDashboard() {
     // Header
     '<div class="view-header dash-header">' +
     '<div>' +
-    '<div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + '! 👋</div>' +
+    '<div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + '!</div>' +
     '<div class="dash-date">' + dateStr + '</div>' +
     '</div>' +
     '<div class="dash-header-actions">' +
@@ -4742,27 +4747,21 @@ function renderDashboard() {
     // KPI Row — 6 cards
     '<div class="stats-row">' +
     '<div class="stat-card kpi-card' + kpic('open') + '" id="kpi-open">' +
-    '<div class="stat-icon" style="background:rgba(59,130,246,0.12)">📬</div>' +
     '<div><div class="stat-val">' + st.open + '</div><div class="stat-label">Abertos</div></div></div>' +
 
     '<div class="stat-card kpi-card' + kpic('progress') + '" id="kpi-progress">' +
-    '<div class="stat-icon" style="background:rgba(249,115,22,0.12)">🔄</div>' +
     '<div><div class="stat-val">' + st.progress + '</div><div class="stat-label">Em Andamento</div></div></div>' +
 
     '<div class="stat-card kpi-card' + kpic('done') + '" id="kpi-done">' +
-    '<div class="stat-icon" style="background:rgba(34,197,94,0.12)">✅</div>' +
     '<div><div class="stat-val">' + st.done + '</div><div class="stat-label">Concluídos</div></div></div>' +
 
     '<div class="stat-card kpi-card' + kpic('overdue') + '" id="kpi-overdue">' +
-    '<div class="stat-icon" style="background:rgba(239,68,68,0.12)">⚠️</div>' +
     '<div><div class="stat-val' + (st.overdue > 0 ? ' kpi-val-red' : '') + '">' + st.overdue + '</div><div class="stat-label">Atrasados</div></div></div>' +
 
     '<div class="stat-card kpi-card kpi-static">' +
-    '<div class="stat-icon" style="background:rgba(234,179,8,0.12)">★</div>' +
     '<div><div class="stat-val kpi-val-csat">' + csatAvg + (csatCount > 0 ? '<span class="kpi-val-sub">/5</span>' : '') + '</div><div class="stat-label">CSAT Médio</div></div></div>' +
 
     '<div class="stat-card kpi-card kpi-static">' +
-    '<div class="stat-icon" style="background:rgba(168,85,247,0.12)">🛡</div>' +
     '<div><div class="stat-val' + (slaPct < 70 ? ' kpi-val-red' : slaPct < 90 ? ' kpi-val-warn' : '') + '">' + slaPct + '<span class="kpi-val-sub">%</span></div><div class="stat-label">SLA no Prazo</div></div></div>' +
     '</div>' +
 
@@ -4772,13 +4771,13 @@ function renderDashboard() {
     // Left: boards + tickets
     '<div class="dash-main-col">' +
     // Boards grid
-    '<div class="dash-section-heading">📋 Quadros</div>' +
+    '<div class="dash-section-heading">Quadros</div>' +
     '<div class="boards-grid">' + tiles +
     '<div class="board-card-new board-card-new-enhanced" id="dash-new-board">' + ICONS.plus + '<span>Novo<br>Quadro</span></div>' +
     '</div>' +
 
     // Tickets
-    '<div class="dash-section-heading" style="margin-top:28px">🎫 Todos os Tickets' +
+    '<div class="dash-section-heading" style="margin-top:28px">Todos os Tickets' +
     (hasFilter ? ' <span class="dash-result-count">(' + filtered.length + ' resultado' + (filtered.length !== 1 ? 's' : '') + ')</span>' : '') +
     '</div>' +
     // Filter bar with search
@@ -8093,10 +8092,9 @@ function _buildApiMetricsHtml(m, slaData) {
 
 // ── KPI card helper ─────────────────────────────────────────
 function _rtKpiCard(icon, val, color, label) {
-  return '<div style="flex:1;min-width:110px;background:var(--bg,#0d0d0d);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;">' +
-    '<div style="font-size:18px;margin-bottom:4px;">' + icon + '</div>' +
-    '<div style="font-size:26px;font-weight:800;line-height:1.1;margin-bottom:4px;color:' + color + '">' + val + '</div>' +
-    '<div style="font-size:11px;color:var(--text-light,#666);text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>' +
+  return '<div style="flex:1;min-width:110px;background:var(--s2,#1A1714);border:1px solid var(--bd1,#1A1714);border-radius:10px;padding:14px 16px;text-align:center;">' +
+    '<div style="font-size:26px;font-weight:300;line-height:1.1;margin-bottom:4px;color:' + color + '">' + val + '</div>' +
+    '<div style="font-size:10px;color:var(--t3,#5A5048);text-transform:uppercase;letter-spacing:0.8px;">' + label + '</div>' +
     '</div>';
 }
 
