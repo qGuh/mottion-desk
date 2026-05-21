@@ -267,6 +267,29 @@ function dept(id) { var ds = getDepts(); return ds.find(function (d) { return d.
 function pri(id) { return PRIORITIES.find(function (p) { return p.id === id; }) || PRIORITIES[1]; }
 function safeBg(b) { if (!b) return '#3B82F6'; return b.color || b; }
 
+// ─── MUTED BADGE HELPERS ────────────────────────────────────
+var _BADGE_STATUS = {
+  done:     { bg: 'rgba(45,184,122,0.12)',  color: '#2DB87A', border: 'rgba(45,184,122,0.20)' },
+  open:     { bg: 'rgba(255,140,58,0.12)',  color: '#FF8C3A', border: 'rgba(255,140,58,0.20)' },
+  progress: { bg: 'rgba(74,143,232,0.12)',  color: '#4A8FE8', border: 'rgba(74,143,232,0.20)' },
+  default:  { bg: 'rgba(160,144,128,0.12)', color: '#A09080', border: 'rgba(160,144,128,0.20)' }
+};
+var _BADGE_PRI = {
+  low:    { bg: 'rgba(45,184,122,0.12)',  color: '#2DB87A', border: 'rgba(45,184,122,0.20)',  name: 'Baixa'   },
+  medium: { bg: 'rgba(255,140,58,0.12)',  color: '#FF8C3A', border: 'rgba(255,140,58,0.20)',  name: 'Média'   },
+  high:   { bg: 'rgba(240,160,48,0.12)',  color: '#F0A030', border: 'rgba(240,160,48,0.20)',  name: 'Alta'    },
+  urgent: { bg: 'rgba(232,69,69,0.12)',   color: '#E84545', border: 'rgba(232,69,69,0.20)',   name: 'Urgente' }
+};
+var _BADGE_STYLE = 'font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;border:1px solid ';
+function badgeStatus(isDone, isOpen) {
+  var s = isDone ? _BADGE_STATUS.done : isOpen ? _BADGE_STATUS.open : _BADGE_STATUS.progress;
+  return 'style="background:' + s.bg + ';color:' + s.color + ';' + _BADGE_STYLE + s.border + ';white-space:nowrap"';
+}
+function badgePri(id) {
+  var s = _BADGE_PRI[id] || _BADGE_PRI.medium;
+  return { style: 'style="background:' + s.bg + ';color:' + s.color + ';' + _BADGE_STYLE + s.border + '"', name: s.name };
+}
+
 function hexAlpha(hex, a) {
   hex = (hex || '#3B82F6').replace('#', '');
   if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
@@ -2196,7 +2219,7 @@ function fillSidebarBoards() {
     var b = bs[i];
     var active = App.view === 'board' && App.boardId === b.id ? ' active' : '';
     html += '<a class="sidebar-link' + active + '" data-bid="' + b.id + '">' +
-      '<span class="dot" style="background:' + safeBg(b.background) + '"></span>' +
+      '<span class="dot" style="background:var(--brand)"></span>' +
       '<span class="label">' + esc(b.name) + '</span></a>';
   }
   el.innerHTML = html;
@@ -4429,14 +4452,12 @@ function renderDashboard() {
   var st = Store.stats();
   var bs = Store.boards();
   var now = new Date();
-  var hour = now.getHours();
-  var greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
   var df = App.dashFilter;
 
   // First-run onboarding
   if (bs.length === 0) {
     main.innerHTML =
-      '<div class="view-header"><div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + '</div></div>' +
+      '<div class="view-header"><div class="view-title">Início</div></div>' +
       '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;gap:12px">' +
       '<div style="margin-bottom:8px">' + LOGO_42 + '</div>' +
       '<div style="font-size:22px;font-weight:700;color:var(--text)">Bem-vindo ao Mottion Desk!</div>' +
@@ -4495,7 +4516,6 @@ function renderDashboard() {
       : (bHasUrgent ? '<span class="board-card-urgency-dot board-card-urgency-high" title="Alta prioridade">▲</span>' : '');
     tiles +=
       '<div class="board-card board-card-enhanced" data-bid="' + b.id + '">' +
-      '<div class="board-card-color-bar" style="background:' + safeBg(b.background) + '"></div>' +
       '<div class="board-card-body">' +
       '<div class="board-card-top">' +
       '<div class="board-card-title">' + esc(b.name) + urgentDot + '</div>' +
@@ -4604,7 +4624,7 @@ function renderDashboard() {
   var recentHtml = '';
   for (var ri = 0; ri < displayed.length; ri++) {
     var rt = displayed[ri];
-    var rp = pri(rt.card.priority);
+    var _bpri = badgePri(rt.card.priority);
     var asgn = rt.card.assigneeId ? Store.user(rt.card.assigneeId) : null;
     var req  = rt.card.requesterId ? Store.user(rt.card.requesterId) : null;
     var isOverdue = rt.card.dueDate && parseDate(rt.card.dueDate) < now && !rt.isDone;
@@ -4629,7 +4649,6 @@ function renderDashboard() {
       }
     }
 
-    var statusColor = rt.isDone ? 'var(--green)' : rt.isOpen ? 'var(--brand)' : '#f97316';
     var ticketCell =
       '<div class="dt-ticket-main"><span class="dt-ticket-num">#' + String(rt.card.ticketNumber).padStart(3, '0') + '</span> <span class="dt-ticket-title">' + esc(rt.card.title) + '</span></div>' +
       '<div class="dt-ticket-sub">' +
@@ -4645,8 +4664,8 @@ function renderDashboard() {
     recentHtml +=
       '<tr data-bid="' + rt.boardId + '" data-lid="' + rt.listId + '" data-cid="' + rt.card.id + '" class="dash-recent-row' + (isOverdue ? ' row-overdue' : '') + '">' +
       '<td class="td-name">' + ticketCell + '</td>' +
-      '<td><span class="badge" style="background:' + statusColor + ';white-space:nowrap">' + esc(rt.listName) + '</span></td>' +
-      '<td><span class="badge" style="background:' + rp.color + '">' + rp.name + '</span></td>' +
+      '<td><span class="badge" ' + badgeStatus(rt.isDone, rt.isOpen) + '>' + esc(rt.listName) + '</span></td>' +
+      '<td><span class="badge" ' + _bpri.style + '>' + _bpri.name + '</span></td>' +
       '<td>' + asgnCell + '</td>' +
       '<td style="white-space:nowrap;font-size:12px">' + dateCell + '</td>' +
       '<td class="td-actions"><button class="dash-action-btn" data-bid="' + rt.boardId + '" data-lid="' + rt.listId + '" data-cid="' + rt.card.id + '">⋯</button></td>' +
@@ -4733,8 +4752,8 @@ function renderDashboard() {
     // Header
     '<div class="view-header dash-header">' +
     '<div>' +
-    '<div class="view-title">' + greeting + ', ' + esc((me.name || 'Usuário').split(' ')[0]) + '!</div>' +
-    '<div class="dash-date">' + dateStr + '</div>' +
+    '<h1 style="font-size:20px;font-weight:500;color:var(--t1);letter-spacing:-0.3px;margin:0;line-height:1.2">Início</h1>' +
+    '<p style="font-size:12px;color:var(--t4);margin:2px 0 0;text-transform:capitalize">' + dateStr + '</p>' +
     '</div>' +
     '<div class="dash-header-actions">' +
     '<button class="btn-secondary dash-shortcut-btn" id="dash-goto-tasks">' + ICONS.check + ' Minhas Tarefas</button>' +
@@ -4803,7 +4822,7 @@ function renderDashboard() {
     // My Tickets
     '<div class="dash-side-panel">' +
     '<div class="dash-side-panel-title">' +
-    '<span>✅ Meus Tickets</span>' +
+    '<span>Meus Tickets</span>' +
     (myOpen.length > 0 ? '<span class="dash-side-badge">' + myOpen.length + '</span>' : '') +
     '</div>' +
     myTicketsHtml +
@@ -4811,7 +4830,7 @@ function renderDashboard() {
 
     // Activity feed
     '<div class="dash-side-panel">' +
-    '<div class="dash-side-panel-title">⚡ Atividade Recente</div>' +
+    '<div class="dash-side-panel-title">Atividade Recente</div>' +
     actHtml +
     '</div>' +
 
@@ -5068,11 +5087,11 @@ function renderMyTasks() {
     for (var i = 0; i < arr.length; i++) {
       var t = arr[i];
       var p = pri(t.card.priority);
-      var statusColor = isDoneSection ? 'var(--green)' : 'var(--brand)';
+      var _tp = badgePri(t.card.priority);
       h += '<tr data-bid="' + t.boardId + '" data-lid="' + t.listId + '" data-cid="' + t.card.id + '" class="dash-recent-row">' +
         '<td class="td-name">' + richTicketCell(t.card) + '</td>' +
-        '<td><span class="badge" style="background:' + statusColor + ';white-space:nowrap">' + esc(t.listName) + '</span></td>' +
-        '<td><span class="badge" style="background:' + p.color + '">' + p.name + '</span></td>' +
+        '<td><span class="badge" ' + badgeStatus(isDoneSection, !isDoneSection) + '>' + esc(t.listName) + '</span></td>' +
+        '<td><span class="badge" ' + _tp.style + '>' + _tp.name + '</span></td>' +
         '<td>' + richAsgnCell(t.card) + '</td>' +
         '<td style="white-space:nowrap;font-size:12px">' + richDateCell(t.card, isDoneSection) + '</td>' +
         '<td style="color:var(--text-secondary);font-size:12px">' + esc(t.boardName) + '</td>' +
