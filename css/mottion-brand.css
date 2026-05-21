@@ -114,6 +114,18 @@ body {
   border-right: 1px solid var(--bd1) !important;
 }
 
+/* Wordmark — texto adapta ao tema (inline color override) */
+/* dark: #E8DDD0 já correto | light: forçar var(--t1) escuro */
+[data-theme="light"] .sidebar-logo span,
+[data-theme="light"] .header-logo span {
+  color: var(--t1) !important;
+}
+/* "tt" laranja permanece igual nos dois temas */
+[data-theme="light"] .sidebar-logo strong,
+[data-theme="light"] .header-logo strong {
+  color: var(--brand) !important;
+}
+
 .sidebar-logo {
   padding: 18px 16px 14px !important;
   border-bottom: 1px solid var(--bd1) !important;
