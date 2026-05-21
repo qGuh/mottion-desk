@@ -1,0 +1,875 @@
+/*
+ * mottion-brand.css
+ * Identidade visual Mottion Desk — override definitivo
+ * Adicionar no index.html APÓS todos os outros <link> de CSS
+ * <link rel="stylesheet" href="css/mottion-brand.css">
+ */
+
+/* ═══════════════════════════════════════════════
+   1. TOKENS — sistema de cores warm dark / light
+   ═══════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  --bg:    #0F0D0B;
+  --s1:    #141210;
+  --s2:    #1A1714;
+  --s3:    #201D18;
+  --s4:    #272320;
+  --bd1:   #1E1B16;
+  --bd2:   #252018;
+  --bd3:   #2E2A22;
+  --t1:    #E8DDD0;
+  --t2:    #A09080;
+  --t3:    #5A5048;
+  --t4:    #302C24;
+
+  --brand:        #FF8C3A;
+  --brand-deep:   #FF6B1A;
+  --brand-muted:  rgba(255,140,58,0.10);
+  --brand-border: rgba(255,140,58,0.20);
+
+  --red:          #E84545;
+  --red-muted:    rgba(232,69,69,0.10);
+  --red-border:   rgba(232,69,69,0.20);
+  --amber:        #F0A030;
+  --amber-muted:  rgba(240,160,48,0.10);
+  --amber-border: rgba(240,160,48,0.20);
+  --green:        #2DB87A;
+  --green-muted:  rgba(45,184,122,0.10);
+  --green-border: rgba(45,184,122,0.20);
+  --blue:         #4A8FE8;
+  --blue-muted:   rgba(74,143,232,0.10);
+  --purple:       #8B5CF6;
+
+  /* aliases que o código antigo usa */
+  --surface:         var(--s2);
+  --surface-2:       var(--s3);
+  --border:          var(--bd2);
+  --text:            var(--t1);
+  --text-secondary:  var(--t2);
+  --text-light:      var(--t3);
+  --brand-light:     var(--brand-muted);
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-full: 999px;
+}
+
+[data-theme="light"] {
+  --bg:    #F4F2EE;
+  --s1:    #ECEAE4;
+  --s2:    #E4E0D8;
+  --s3:    #DDD8D0;
+  --s4:    #D4CFC6;
+  --bd1:   #DDD8D0;
+  --bd2:   #D0CBC0;
+  --bd3:   #C0B8A8;
+  --t1:    #1A1714;
+  --t2:    #4A4438;
+  --t3:    #8A8070;
+  --t4:    #B0A898;
+
+  --surface:        var(--s2);
+  --surface-2:      var(--s3);
+  --border:         var(--bd2);
+  --text:           var(--t1);
+  --text-secondary: var(--t2);
+  --text-light:     var(--t3);
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+/* ═══════════════════════════════════════════════
+   2. BASE
+   ═══════════════════════════════════════════════ */
+
+body {
+  background: var(--bg) !important;
+  color: var(--t1) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bd3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--t3); }
+
+/* ═══════════════════════════════════════════════
+   3. SIDEBAR
+   ═══════════════════════════════════════════════ */
+
+.sidebar {
+  background: var(--s1) !important;
+  border-right: 1px solid var(--bd1) !important;
+}
+
+.sidebar-logo {
+  padding: 18px 16px 14px !important;
+  border-bottom: 1px solid var(--bd1) !important;
+  background: var(--s1) !important;
+}
+
+.sidebar-logo-text {
+  font-size: 15px !important;
+  font-weight: 300 !important;
+  color: var(--t1) !important;
+  letter-spacing: -0.3px !important;
+}
+
+.sidebar-logo-sub {
+  font-size: 9px !important;
+  color: var(--t4) !important;
+  letter-spacing: 0.5px !important;
+}
+
+.sidebar-section-title {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+  color: var(--t4) !important;
+  padding: 10px 10px 4px !important;
+}
+
+.sidebar-nav {
+  padding: 6px 8px !important;
+}
+
+.sidebar-link {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--t3) !important;
+  padding: 6px 8px !important;
+  border-radius: 5px !important;
+  margin-bottom: 1px !important;
+  position: relative !important;
+  transition: all 0.1s !important;
+  background: transparent !important;
+}
+
+.sidebar-link:hover,
+[data-theme="dark"] .sidebar-link:hover,
+[data-theme="light"] .sidebar-link:hover {
+  color: var(--t2) !important;
+  background: var(--s2) !important;
+}
+
+.sidebar-link.active,
+[data-theme="dark"] .sidebar-link.active,
+[data-theme="light"] .sidebar-link.active {
+  color: var(--t1) !important;
+  background: var(--s2) !important;
+  font-weight: 500 !important;
+}
+
+.sidebar-link.active::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 2px !important;
+  height: 16px !important;
+  background: var(--brand) !important;
+  border-radius: 0 2px 2px 0 !important;
+}
+
+.sidebar-link svg {
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.5 !important;
+}
+
+.sidebar-link.active svg {
+  opacity: 1 !important;
+  color: var(--brand) !important;
+}
+
+/* Dots dos boards — todos laranja */
+.sidebar-link .dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 2px !important;
+  background: var(--brand) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Badges de contagem */
+.sidebar-link .badge-count,
+.sidebar-link .count,
+.sidebar-link [class*="count"] {
+  font-size: 9px !important;
+  background: var(--s3) !important;
+  color: var(--t3) !important;
+  border: none !important;
+  padding: 1px 5px !important;
+  border-radius: 8px !important;
+}
+
+/* ═══════════════════════════════════════════════
+   4. TOPBAR
+   ═══════════════════════════════════════════════ */
+
+.topbar,
+.main-topbar,
+[class*="topbar"]:not([class*="sub"]) {
+  background: var(--s1) !important;
+  border-bottom: 1px solid var(--bd1) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   5. BOTÕES
+   ═══════════════════════════════════════════════ */
+
+.btn-primary,
+button.btn-primary {
+  background: var(--brand) !important;
+  color: var(--bg) !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  border: none !important;
+  border-radius: 5px !important;
+  padding: 6px 12px !important;
+  box-shadow: none !important;
+}
+
+.btn-primary:hover {
+  background: var(--brand-deep) !important;
+}
+
+.btn-secondary,
+button.btn-secondary {
+  background: transparent !important;
+  color: var(--t3) !important;
+  border: 1px solid var(--bd2) !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  box-shadow: none !important;
+}
+
+.btn-secondary:hover {
+  background: var(--s2) !important;
+  color: var(--t2) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   6. KPI / STAT CARDS — sem ícone, sem gradiente
+   ═══════════════════════════════════════════════ */
+
+.stat-card {
+  background: var(--s1) !important;
+  border: 1px solid var(--bd1) !important;
+  border-radius: 8px !important;
+  padding: 18px 20px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: border-color 0.1s !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  align-items: flex-start !important;
+}
+
+.stat-card:hover,
+[data-theme="dark"] .stat-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: var(--bd2) !important;
+}
+
+.stat-icon {
+  display: none !important;
+}
+
+.stat-val,
+.stat-value,
+.stat-number {
+  font-size: 32px !important;
+  font-weight: 300 !important;
+  letter-spacing: -1.5px !important;
+  line-height: 1 !important;
+  color: var(--t1) !important;
+}
+
+.stat-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  color: var(--t4) !important;
+  margin-top: 4px !important;
+}
+
+/* ═══════════════════════════════════════════════
+   7. BOARD CARDS
+   ═══════════════════════════════════════════════ */
+
+.board-card,
+.board-card-enhanced {
+  background: var(--s1) !important;
+  border: 1px solid var(--bd1) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: border-color 0.1s !important;
+}
+
+.board-card:hover,
+.board-card-enhanced:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: var(--bd2) !important;
+}
+
+/* Remove barra colorida no topo */
+.board-card-color-bar {
+  display: none !important;
+}
+
+.board-card-title,
+.board-card-enhanced .board-card-title {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--t1) !important;
+  text-shadow: none !important;
+}
+
+.board-card-dept,
+.board-card-enhanced .board-card-dept {
+  font-size: 11px !important;
+  color: var(--t3) !important;
+  text-shadow: none !important;
+}
+
+/* Stats dentro do board card */
+.bcs-open { color: var(--brand) !important; font-weight: 600 !important; }
+.bcs-prog { color: var(--t3) !important; font-weight: 400 !important; }
+.bcs-done { color: var(--green) !important; font-weight: 600 !important; }
+
+.board-card-stats {
+  font-size: 11px !important;
+  color: var(--t3) !important;
+}
+
+/* Barra de progresso */
+.board-card-progress-wrap {
+  height: 2px !important;
+  background: var(--bd1) !important;
+  border-radius: 1px !important;
+}
+
+.board-card-progress-bar {
+  background: var(--brand) !important;
+  height: 2px !important;
+  border-radius: 1px !important;
+}
+
+/* Urgency dot — remover */
+.board-card-urgency-dot,
+.board-card-urgency-high {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════
+   8. KANBAN
+   ═══════════════════════════════════════════════ */
+
+.kanban-scroll {
+  background: var(--bg) !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+.kanban-col,
+[data-theme="dark"] .kanban-col {
+  background: transparent !important;
+  border: none !important;
+  border-right: 1px solid var(--bd1) !important;
+  border-radius: 0 !important;
+  flex: 1 !important;
+  max-height: 100% !important;
+}
+
+.kanban-col:last-child {
+  border-right: none !important;
+}
+
+.kanban-col-header {
+  background: var(--s1) !important;
+  border-bottom: 1px solid var(--bd1) !important;
+  padding: 10px 14px 8px !important;
+}
+
+.kanban-col-title {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  color: var(--t3) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: default !important;
+}
+
+.kanban-col-title:focus {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.kanban-col-count,
+[data-theme="dark"] .kanban-col-count {
+  font-size: 9px !important;
+  font-family: monospace !important;
+  background: var(--bg) !important;
+  color: var(--t4) !important;
+  border: 1px solid var(--bd1) !important;
+  padding: 1px 5px !important;
+  border-radius: 8px !important;
+}
+
+.kanban-col-cards {
+  padding: 8px !important;
+  background: var(--bg) !important;
+}
+
+.kanban-col-footer {
+  background: var(--bg) !important;
+  border-top: 1px solid var(--bd1) !important;
+  padding: 7px 12px !important;
+}
+
+/* ═══════════════════════════════════════════════
+   9. TICKET CARDS (kanban)
+   ═══════════════════════════════════════════════ */
+
+.ticket-card,
+[data-theme="dark"] .ticket-card {
+  background: var(--s2) !important;
+  border: 1px solid var(--bd1) !important;
+  border-left: 2.5px solid var(--brand) !important;
+  border-radius: 6px !important;
+  padding: 11px 12px !important;
+  margin-bottom: 6px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: border-color 0.1s !important;
+}
+
+.ticket-card:hover,
+[data-theme="dark"] .ticket-card:hover {
+  border-color: var(--bd2) !important;
+  border-left-color: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Prioridade — border-left colorida, não barra no topo */
+.ticket-card .priority-bar {
+  display: none !important;
+}
+
+/* Aplicar border-left por prioridade via atributo data */
+.ticket-card[data-priority="critica"],
+.ticket-card[data-priority="urgente"] {
+  border-left-color: var(--red) !important;
+}
+.ticket-card[data-priority="alta"] {
+  border-left-color: var(--amber) !important;
+}
+.ticket-card[data-priority="media"] {
+  border-left-color: var(--brand) !important;
+}
+.ticket-card[data-priority="baixa"] {
+  border-left-color: var(--green) !important;
+}
+
+.ticket-card .card-number {
+  font-size: 9px !important;
+  font-family: monospace !important;
+  font-weight: 700 !important;
+  color: var(--t4) !important;
+  margin-bottom: 6px !important;
+}
+
+.ticket-card .card-title {
+  font-size: 12px !important;
+  color: var(--t2) !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+
+/* Card concluído */
+.ticket-card.done-card,
+[data-theme="dark"] .ticket-card.done-card {
+  background: var(--s1) !important;
+  border-color: var(--bd1) !important;
+  opacity: 0.45 !important;
+}
+
+.ticket-card.done-card .card-title {
+  text-decoration: none !important;
+  color: var(--t3) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   10. BADGES — nunca sólidos
+   ═══════════════════════════════════════════════ */
+
+/* Base */
+.badge {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 3px !important;
+  color: var(--t2) !important;
+  background: var(--s3) !important;
+  border: 1px solid var(--bd2) !important;
+}
+
+/* Prioridade */
+.badge-critica,
+.badge-urgente,
+[class*="priority-critica"],
+[class*="priority-urgente"] {
+  background: var(--red-muted) !important;
+  color: var(--red) !important;
+  border: 1px solid var(--red-border) !important;
+}
+.badge-alta,
+[class*="priority-alta"] {
+  background: var(--amber-muted) !important;
+  color: var(--amber) !important;
+  border: 1px solid var(--amber-border) !important;
+}
+.badge-media,
+[class*="priority-media"] {
+  background: var(--brand-muted) !important;
+  color: var(--brand) !important;
+  border: 1px solid var(--brand-border) !important;
+}
+.badge-baixa,
+[class*="priority-baixa"] {
+  background: var(--green-muted) !important;
+  color: var(--green) !important;
+  border: 1px solid var(--green-border) !important;
+}
+
+/* Status */
+.badge-open,
+.badge-aberto,
+[class*="status-aberto"],
+[class*="status-open"] {
+  background: var(--amber-muted) !important;
+  color: var(--amber) !important;
+  border: 1px solid var(--amber-border) !important;
+}
+.badge-done,
+.badge-concluido,
+.badge-fechado,
+[class*="status-concluido"],
+[class*="status-done"],
+[class*="status-fechado"] {
+  background: var(--green-muted) !important;
+  color: var(--green) !important;
+  border: 1px solid var(--green-border) !important;
+}
+.badge-progress,
+.badge-em_andamento,
+[class*="status-progress"],
+[class*="status-em_andamento"] {
+  background: var(--blue-muted) !important;
+  color: var(--blue) !important;
+  border: 1px solid rgba(74,143,232,0.20) !important;
+}
+.badge-review,
+.badge-em_revisao,
+[class*="status-em_revisao"] {
+  background: rgba(139,92,246,0.10) !important;
+  color: var(--purple) !important;
+  border: 1px solid rgba(139,92,246,0.20) !important;
+}
+.badge-agendado,
+[class*="status-agendado"] {
+  background: var(--blue-muted) !important;
+  color: var(--blue) !important;
+  border: 1px solid rgba(74,143,232,0.20) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   11. TABELA DE TICKETS
+   ═══════════════════════════════════════════════ */
+
+.data-table {
+  background: var(--s1) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--bd1) !important;
+}
+
+.data-table th {
+  background: var(--s1) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+  color: var(--t4) !important;
+  padding: 9px 14px !important;
+  border-bottom: 1px solid var(--bd1) !important;
+}
+
+.data-table td {
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--bd1) !important;
+  color: var(--t2) !important;
+  font-size: 12px !important;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+.data-table tr:hover td {
+  background: var(--s2) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   12. MODAL DE TICKET
+   ═══════════════════════════════════════════════ */
+
+/* Overlay */
+.modal-overlay,
+.ticket-modal-overlay,
+[class*="modal-overlay"] {
+  background: rgba(15,13,11,0.88) !important;
+}
+
+[data-theme="light"] .modal-overlay,
+[data-theme="light"] .ticket-modal-overlay {
+  background: rgba(26,23,20,0.65) !important;
+}
+
+/* Container */
+.modal,
+.ticket-modal,
+[class*="modal-container"] {
+  background: var(--s2) !important;
+  border: 1px solid var(--bd2) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* Header — NUNCA colorido */
+.modal-header,
+.ticket-modal-header,
+[class*="modal-header"] {
+  background: var(--s1) !important;
+  border-bottom: 1px solid var(--bd1) !important;
+  color: var(--t1) !important;
+}
+
+/* Remover qualquer cor de fundo baseada em prioridade no header */
+.modal-header[style*="background"],
+.ticket-modal-header[style*="background"] {
+  background: var(--s1) !important;
+}
+
+/* Título */
+.modal-title,
+.ticket-modal-title,
+[class*="modal"] input[class*="title"],
+[class*="modal"] h1,
+[class*="modal"] h2 {
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  color: var(--t1) !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Inputs e textareas no modal */
+.modal textarea,
+.modal input[type="text"],
+.modal select,
+.ticket-modal textarea,
+.ticket-modal input[type="text"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--bd1) !important;
+  border-radius: 5px !important;
+  color: var(--t2) !important;
+  font-size: 12px !important;
+}
+
+.modal textarea:focus,
+.modal input[type="text"]:focus {
+  border-color: var(--bd3) !important;
+  outline: none !important;
+}
+
+/* Painel de propriedades */
+.modal-side,
+.ticket-modal-side,
+[class*="modal-properties"],
+[class*="modal-sidebar"] {
+  background: var(--s1) !important;
+  border-left: 1px solid var(--bd1) !important;
+}
+
+/* SLA vencido */
+.sla-danger,
+.sla-overdue,
+[class*="sla"][class*="danger"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--red-border) !important;
+  border-radius: 5px !important;
+  color: var(--red) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   13. DASHBOARD — seções e headers
+   ═══════════════════════════════════════════════ */
+
+/* Título da página */
+.page-title,
+.dash-title,
+.view-title,
+h1.title {
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  color: var(--t1) !important;
+  letter-spacing: -0.3px !important;
+}
+
+/* Section headers */
+.section-heading,
+.dash-section-title,
+.dash-side-panel-title,
+[class*="section-title"],
+[class*="section-heading"] {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  color: var(--t4) !important;
+  background: transparent !important;
+}
+
+/* Remover emojis e ícones coloridos dos section headers */
+.section-heading svg,
+.dash-section-title svg,
+.dash-side-panel-title svg {
+  display: none !important;
+}
+
+/* Cards do side panel (Meus tickets, Atividade recente) */
+.dash-side-panel,
+[class*="side-panel"] {
+  background: var(--s1) !important;
+  border: 1px solid var(--bd1) !important;
+  border-radius: 8px !important;
+}
+
+/* Overdue alert */
+.dash-overdue-alert {
+  background: var(--red-muted) !important;
+  border-color: var(--red-border) !important;
+  border-radius: 6px !important;
+}
+
+/* ═══════════════════════════════════════════════
+   14. FORMULÁRIOS E INPUTS GLOBAIS
+   ═══════════════════════════════════════════════ */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+  background: var(--bg) !important;
+  border-color: var(--bd1) !important;
+  color: var(--t1) !important;
+  border-radius: 5px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--bd3) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--t4) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   15. TELA DE LOGIN
+   ═══════════════════════════════════════════════ */
+
+.api-login-root,
+.login-page,
+[class*="login-container"] {
+  background: var(--bg) !important;
+}
+
+.api-login-card,
+.login-card,
+[class*="login-card"] {
+  background: var(--s1) !important;
+  border: 1px solid var(--bd2) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.api-login-card button[type="submit"],
+.login-card .btn-primary {
+  background: var(--brand) !important;
+  color: var(--bg) !important;
+  font-weight: 700 !important;
+  width: 100% !important;
+}
+
+/* ═══════════════════════════════════════════════
+   16. LIMPEZA GERAL
+   ═══════════════════════════════════════════════ */
+
+/* Remover hover com transform em cards */
+.stat-card:hover,
+.board-card:hover,
+.board-card-enhanced:hover,
+.ticket-card:hover {
+  transform: none !important;
+}
+
+/* Remover box-shadow colorido */
+[data-theme="dark"] .stat-card:hover,
+[data-theme="dark"] .board-card:hover,
+[data-theme="dark"] .ticket-card:hover {
+  box-shadow: none !important;
+}
+
+/* Remover gradientes de fundo nos board cards */
+.board-card[style*="background"],
+.board-card[style*="gradient"] {
+  background: var(--s1) !important;
+}
+
+/* Garantir que não haja cor branca em textos de board cards */
+.board-card-title[style*="color: white"],
+.board-card-dept[style*="color: white"] {
+  color: var(--t1) !important;
+}
